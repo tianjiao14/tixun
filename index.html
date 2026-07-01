@@ -1912,21 +1912,34 @@ let defaultStandardsVisible = false;
     }
 
     function importBackupData(e) {
-        const file = e.target.files[0]; if (!file) return;
+        const file = e.target.files[0]; 
+        if (!file) return;
+        
         const reader = new FileReader();
         reader.onload = function(evt) {
             try {
                 const backData = JSON.parse(evt.target.result);
+                
+                // 1. 读取备份文件中的核心数据
                 students = backData.students || {};
                 records = backData.records || {};
+                
+                if (currentModule !== 'ty') {
+                    scoreHistory = backData.scoreHistory || {};
+                }
+                
+                // 2. 如果备份里包含了设定的外挂评分标准，一并恢复
                 if(backData.ty_stds) localStorage.setItem('sys_ty_standards', JSON.stringify(backData.ty_stds));
                 if(backData.tx_stds) localStorage.setItem('sys_tx_standards', JSON.stringify(backData.tx_stds));
-                if(currentModule !== 'ty') scoreHistory = backData.scoreHistory || {};
                 
-                loadModuleData();
-                alert("🎉 全量备份及外挂评分机制导入成功！"); 
+                // 🚀 核心修复：将读取到的数据写入当前环境的系统缓存，而不是去读取旧缓存
+                saveModuleData(); 
+                
+                alert(`🎉 备份数据导入恢复成功！(已导入至【${currentModule === 'ty' ? '体育课' : (currentModule === 'tx' ? '体训队' : '代表队')}】模块)`); 
                 renderAccordion();
-            } catch(err) { alert("文件解析失败"); }
+            } catch(err) { 
+                alert("文件解析失败，请检查文件是否损坏：" + err); 
+            }
         };
         reader.readAsText(file);
     }
