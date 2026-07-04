@@ -1573,7 +1573,7 @@ let defaultStandardsVisible = false;
                         <input type="text" id="modal-tx-sp-name" value="${isCustom ? spName : ''}" placeholder="输入自定义名称" style="flex:1; border:1px solid #FFCC80; border-radius:4px; padding:10px; font-size:14px; margin:0; display:${isCustom ? 'block' : 'none'};" oninput="updateLiveTxTotal('${gender}')">
                     </div>
                     <div style="display:flex; gap:6px; align-items:center;">
-                        <input type="text" id="modal-tx-sp-val" class="student-score-field" data-proj="专项成绩" value="${spVal}" placeholder="录入成绩(如:23.54)" style="flex:1; border:1px solid #FFCC80; border-radius:4px; padding:10px; font-size:14px; margin:0;" oninput="updateLiveTxTotal('${gender}')">
+                        <input type="number" step="0.01" id="modal-tx-sp-val" class="student-score-field" data-proj="专项成绩" value="${spVal}" placeholder="录入成绩(如:23.54)" style="flex:1; border:1px solid #FFCC80; border-radius:4px; padding:10px; font-size:14px; margin:0;" oninput="updateLiveTxTotal('${gender}')">
                         <div class="live-score-badge ${badgeCls4}" id="live-badge-sp" style="width:70px; text-align:center; padding:10px 4px; background:#FFF3E0; color:#E65100; border-radius:4px; font-weight:bold; font-size:14px; margin:0; flex-shrink:0;">${p4}分</div>
                     </div>
                 </div>
