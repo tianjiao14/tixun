@@ -696,7 +696,7 @@ function manualChangeSemester(targetSem) {
         if(typeof isConfigPageActive !== 'undefined' && isConfigPageActive) {
             isConfigPageActive = false;
             if(document.getElementById('toggleConfigPageBtn')) {
-                document.getElementById('toggleConfigPageBtn').innerText = "📊 进入/切换至 [评分标准外挂修改控制台]";
+                document.getElementById('toggleConfigPageBtn').innerText = "📊 进入/切换至 [评分标准控制台]";
                 document.getElementById('toggleConfigPageBtn').style.backgroundColor = "#607D8B";
             }
         }
@@ -731,7 +731,7 @@ function manualChangeSemester(targetSem) {
             fileWrapper.style.cssText = "border: 2px dashed #4CAF50; background: #f1f8e9; color: #2E7D32;";
             fileStatus.innerText = "🟢 导入/追加 Excel";
             fileTip.innerText = "表格需包含【班级、姓名、性别】。可包含 50米、立定跳远、坐位体前屈、引体向上、1000米，仰卧起坐、800米。";
-            dateLabel.innerText = "今日考勤";
+            dateLabel.innerText = "📅 今日考勤";
             datePicker.style.cssText = "width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #ccc; border-radius: 5px;";
             dateTip.style.display = 'none';
             exportBlock.innerHTML = `<button onclick="exportStatsToExcel()" style="background-color: #2E7D32; margin: 0; font-weight: bold; font-size: 16px;">🟢 生成并导出【期末成绩册】 Excel</button>`;
@@ -984,7 +984,7 @@ let defaultStandardsVisible = false;
 
                 card.innerHTML = `
                     <div class="std-card-title-bar" onclick="toggleStandardCard(this.parentNode, '${projCode}')">
-                        <span class="std-card-title">${readableName} 细分标准 (点击展开/折叠)</span>
+                        <span class="std-card-title">${readableName} 细分标准 </span>
                         <button class="btn-small-del" onclick="event.stopPropagation(); removeEntireProjectStandard('ty','${projCode}')">彻底删除</button>
                     </div>
                     <div class="std-card-content">${subGroupsHtml}</div>
@@ -1043,7 +1043,7 @@ let defaultStandardsVisible = false;
 
                 card.innerHTML = `
                     <div class="std-card-title-bar" onclick="toggleStandardCard(this.parentNode, '${projCode}')">
-                        <span class="std-card-title">${readableName} 细分标准 (点击展开/折叠)</span>
+                        <span class="std-card-title">${readableName} 细分标准</span>
                         <button class="btn-small-del" onclick="event.stopPropagation(); removeEntireProjectStandard('tx','${projCode}')">移除大项</button>
                     </div>
                     <div class="std-card-content">${subGroupsHtml}</div>
