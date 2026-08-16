@@ -316,7 +316,16 @@
             <input type="date" id="datePicker" style="width: 100%; margin-bottom: 10px;">
             <div id="accordionContainer"></div>
         </div>
-
+<div class="section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <h3 id="dateLabel" style="margin:0;">📅 考勤与训练日期</h3>
+        <!-- 新增：考勤周期切换下拉菜单 -->
+        <select id="semesterSelect" onchange="manualChangeSemester(this.value)" style="padding: 4px 8px; font-weight: bold; color: #0D47A1; border: 1px solid #2196F3; border-radius: 4px; margin: 0; font-size: 13px;">
+        </select>
+    </div>
+    <input type="date" id="datePicker" style="width: 100%; margin-bottom: 10px;">
+    <div id="accordionContainer"></div>
+</div>
         <div class="section" id="exportBlock"></div>
     </div>
 
@@ -425,6 +434,55 @@
     let openedClassesState = {};
 
     let currentTYStandards = {};
+// ================== 学期计算与隔离引擎 ==================
+    let currentSemester = ""; // 当前选中的学期（如: "2026-春期"）
+
+    // 根据传入的日期字符串（YYYY-MM-DD）计算对应的学期 Key
+    // 精确到日期的考勤周期判定引擎
+function getSemesterKey(dateStr) {
+    if (!dateStr) return "";
+    const parts = dateStr.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const day = parseInt(parts[2], 10);
+
+    // 2月份：寒假
+    if (month === 2) {
+        return `${year}-寒假`;
+    }
+    // 3月1日 ~ 7月9日：春期
+    if (month >= 3 && month <= 6) {
+        return `${year}-春期`;
+    }
+    if (month === 7 && day < 10) {
+        return `${year}-春期`;
+    }
+    // 7月10日 ~ 8月31日：暑假
+    if ((month === 7 && day >= 10) || month === 8) {
+        return `${year}-暑假`;
+    }
+    // 9月1日 ~ 12月31日：秋期
+    if (month >= 9 && month <= 12) {
+        return `${year}-秋期`;
+    }
+    // 1月份：归属上一学年的秋期（期末阶段）
+    if (month === 1) {
+        return `${year - 1}-秋期`;
+    }
+
+    return `${year}-春期`;
+}
+
+    // 获取系统内已存在考勤记录的所有历史学期列表（包含当前日期所在学期）
+    function getAllAvailableSemesters() {
+        const set = new Set();
+        const curSem = getSemesterKey(document.getElementById('datePicker').value || new Date().toISOString().slice(0, 10));
+        set.add(curSem);
+        for (let d in records) {
+            set.add(getSemesterKey(d));
+        }
+        return Array.from(set).sort().reverse();
+    }
     let currentTXStandards = {};
 
     const statusSequence = ['normal', 'leave', 'absent', 'late', 'early'];
@@ -564,6 +622,34 @@ function getYearMonthKey(dateStr) {
             displayLvl.className = "level-badge " + getTxLevelClass(lvlText);
         }
     }
+// 刷新并同步学期下拉选择列表
+function refreshSemesterSelector() {
+    const semSelect = document.getElementById('semesterSelect');
+    if (!semSelect) return;
+
+    const availableSemesters = getAllAvailableSemesters();
+    const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
+
+    let html = '';
+    availableSemesters.forEach(sem => {
+        html += `<option value="${sem}" ${sem === activeSem ? 'selected' : ''}>🏷️ ${sem}</option>`;
+    });
+    semSelect.innerHTML = html;
+}
+
+// 用户手动在下拉框切换学期（查看历史暑训或过往学期）
+function manualChangeSemester(targetSem) {
+    currentSemester = targetSem;
+    showToast(`🔍 已切换查看【${currentSemester}】考勤数据`);
+    
+    // 更新大标题
+    const title = document.getElementById('sysTitle');
+    if (currentModule === 'ty') title.innerText = `📋 体育课考勤与成绩管理系统 (${currentSemester})`;
+    else if (currentModule === 'tx') title.innerText = `📋 体训生考勤与成绩管理系统 (${currentSemester})`;
+    else if (currentModule === 'db') title.innerText = `📋 代表队集训考勤系统 (${currentSemester})`;
+
+    renderAccordion();
+}
     function initializeSystemStandards() {
         let ty_local = JSON.parse(localStorage.getItem('sys_ty_standards')) || {};
         let tx_local = JSON.parse(localStorage.getItem('sys_tx_standards')) || {};
@@ -644,9 +730,10 @@ function getYearMonthKey(dateStr) {
             dateTip.id = 'dateTipObj';
             datePicker.parentNode.insertBefore(dateTip, datePicker.nextSibling);
         }
-
+        const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
+        currentSemester = activeSem;
         if(mod === 'ty') {
-            title.innerText = "📋 体育课考勤与成绩管理系统";
+            title.innerText = `📋 体育课考勤与成绩管理系统 (${activeSem})`;
             fileWrapper.style.cssText = "border: 2px dashed #4CAF50; background: #f1f8e9; color: #2E7D32;";
             fileStatus.innerText = "🟢 导入/追加 Excel";
             fileTip.innerText = "表格需包含【班级、姓名、性别】。可包含 50米、立定跳远、坐位体前屈、引体向上、1000米，仰卧起坐、800米。";
@@ -655,7 +742,7 @@ function getYearMonthKey(dateStr) {
             dateTip.style.display = 'none';
             exportBlock.innerHTML = `<button onclick="exportStatsToExcel()" style="background-color: #2E7D32; margin: 0; font-weight: bold; font-size: 16px;">🟢 生成并导出【期末成绩册】 Excel</button>`;
         } else if(mod === 'tx') {
-            title.innerText = "📋 体训生考勤与成绩管理系统";
+            title.innerText = `📋 体训生考勤与成绩管理系统 (${activeSem})`;
             fileWrapper.style.cssText = "border: 2px dashed #2196F3; background: #E3F2FD; color: #0D47A1;";
             fileStatus.innerText = "🔵 导入名单/测试成绩 Excel";
             fileTip.innerText = "表格需包含(班级、姓名、性别)可导入(100米、立定三级跳远、铅球)成绩。";
@@ -671,7 +758,7 @@ function getYearMonthKey(dateStr) {
                 </div>
             `;
         } else if(mod === 'db') {
-            title.innerText = "📋 代表队集训考勤系统";
+           title.innerText = `📋 代表队集训考勤系统 (${activeSem})`;
             fileWrapper.style.cssText = "border: 2px dashed #9C27B0; background: #F3E5F5; color: #4A148C;";
             fileStatus.innerText = "🔮 导入代表队花名册 Excel";
             fileTip.innerText = "表格需包含【班级、姓名、性别】。代表队仅保留日常考勤功能。";
@@ -685,6 +772,7 @@ function getYearMonthKey(dateStr) {
 
         loadModuleData();
         renderAccordion();
+        refreshSemesterSelector();
     }
 
     function loadModuleData() {
@@ -710,6 +798,7 @@ function getYearMonthKey(dateStr) {
 
     window.onload = () => { 
         initializeSystemStandards();
+        currentSemester = getSemesterKey(document.getElementById('datePicker').value || new Date().toISOString().slice(0, 10));
         switchModule('ty'); 
     };
 
@@ -1075,12 +1164,22 @@ let defaultStandardsVisible = false;
         const classTotalDays = {};
         cachedStats = {};
         
+        // 获取当前工作日期所归属的学期
+        const currentDate = document.getElementById('datePicker').value;
+        const activeSem = currentSemester || getSemesterKey(currentDate);
+
         classNames.forEach(c => {
-            classTotalDays[c] = 0; cachedStats[c] = {};
-            students[c].forEach(s => { cachedStats[c][s.name] = { leave: 0, absent: 0, late: 0, early: 0 }; });
+            classTotalDays[c] = 0; 
+            cachedStats[c] = {};
+            students[c].forEach(s => { 
+                cachedStats[c][s.name] = { leave: 0, absent: 0, late: 0, early: 0 }; 
+            });
         });
 
         for (let date in records) {
+            // 🌟 核心：非当前学期的打卡记录直接跳过，实现新学期考勤自动从 0 重新计算
+            if (getSemesterKey(date) !== activeSem) continue;
+
             const dateData = records[date];
             classNames.forEach(className => {
                 if (dateData[className]) {
@@ -1855,14 +1954,20 @@ let defaultStandardsVisible = false;
 
     function showStudentCalendar(className, studentName) {
         event.stopPropagation(); 
-        let allDates = Object.keys(records).filter(date => records[date][className]);
-        if (allDates.length === 0) { alert("暂无打卡日志"); return; }
+        const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
+        
+        // 🌟 只提取当前学期内的日期记录
+        let allDates = Object.keys(records).filter(date => records[date][className] && getSemesterKey(date) === activeSem);
+        if (allDates.length === 0) { 
+            alert(`在【${activeSem}】内暂无考勤打卡日志`); 
+            return; 
+        }
         allDates.sort();
         let uniqueMonths = [...new Set(allDates.map(d => d.substring(0, 7)))].sort();
         let modalBody = document.getElementById('modalCalendarBody');
         
         modalBody.innerHTML = `
-            <h3 style="margin-top:5px; text-align:center;">📅 考勤轨迹细则</h3>
+            <h3 style="margin-top:5px; text-align:center;">📅 考勤轨迹细则（${activeSem}）</h3>
             <p style="text-align:center; font-size:14px;">学生：<b>${studentName}</b> (${className})</p>
             <div class="calendar-legend">
                 <div class="legend-item"><div class="legend-box" style="background:var(--normal);"></div>正常</div>
@@ -1895,7 +2000,8 @@ let defaultStandardsVisible = false;
                 else if (status === 'early') cls = 'cal-early';
                 monthHtml += `<div class="day-cell ${cls}"><span>${day}</span></div>`;
             }
-            monthHtml += `</div></div>`; sliderContainer.innerHTML += monthHtml;
+            monthHtml += `</div></div>`; 
+            sliderContainer.innerHTML += monthHtml;
         });
         document.getElementById('calendarModal').style.display = 'flex';
         setTimeout(() => { sliderContainer.scrollLeft = sliderContainer.scrollWidth; }, 60);
@@ -1958,7 +2064,8 @@ let defaultStandardsVisible = false;
             const ws = XLSX.utils.aoa_to_sheet(dataRows);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "期末体育成绩册");
-            XLSX.writeFile(wb, `体育期末成绩册_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
+XLSX.writeFile(wb, `体育期末成绩册_${activeSem}_${new Date().toISOString().slice(0, 10)}.xlsx`);
        } else if (currentModule === 'tx') {
             let sortedMonths = scoreHistory ? Object.keys(scoreHistory).sort() : [];
             let row1 = ["序号", "队伍班级", "姓名", "组别", "累计总出勤率"];
@@ -2006,7 +2113,7 @@ let defaultStandardsVisible = false;
             const ws = XLSX.utils.aoa_to_sheet(dataRows);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "长周期训练册");
-            XLSX.writeFile(wb, `体训大周期跟踪表_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            XLSX.writeFile(wb, `体训队训练跟踪表_${activeSem}_${new Date().toISOString().slice(0, 10)}.xlsx`);
         }else if (currentModule === 'db') {
             // 🌟 代表队纯考勤大表导出
             let row1 = ["序号", "代表队队伍", "队员姓名", "性别", "累计出勤率", "请假节数", "旷课节数", "迟到节数", "早退节数"];
@@ -2032,7 +2139,7 @@ let defaultStandardsVisible = false;
             const ws = XLSX.utils.aoa_to_sheet(dataRows);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "代表队出勤大表");
-            XLSX.writeFile(wb, `代表队考勤汇总明细表_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            XLSX.writeFile(wb, `代表队考勤汇总表_${activeSem}_${new Date().toISOString().slice(0, 10)}.xlsx`);
         }
     }
 
@@ -2112,7 +2219,21 @@ let defaultStandardsVisible = false;
     }
 
     function closeModal(e) { if(e.target.id === 'calendarModal') document.getElementById('calendarModal').style.display = 'none'; }
-    document.getElementById('datePicker').addEventListener('change', renderAccordion);
+   document.getElementById('datePicker').addEventListener('change', function() {
+    const autoSem = getSemesterKey(this.value);
+    if (autoSem !== currentSemester) {
+        currentSemester = autoSem;
+        showToast(`📅 已自动切换至【${currentSemester}】考勤周期`);
+        
+        // 更新大标题
+        const title = document.getElementById('sysTitle');
+        if (currentModule === 'ty') title.innerText = `📋 体育课考勤与成绩管理系统 (${currentSemester})`;
+        else if (currentModule === 'tx') title.innerText = `📋 体训生考勤与成绩管理系统 (${currentSemester})`;
+        else if (currentModule === 'db') title.innerText = `📋 代表队集训考勤系统 (${currentSemester})`;
+    }
+    refreshSemesterSelector(); // 同步更新下拉框的高亮项
+    renderAccordion();
+});
 
    function exportBackupData() {
         // 🌟 1. 强制将当前页面还在内存里、没来得及保存的数据先刷入本地缓存
