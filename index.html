@@ -2006,6 +2006,7 @@ let defaultStandardsVisible = false;
     function exportStatsToExcel() {
         const classNames = Object.keys(students);
         if (classNames.length === 0) { alert('暂无可用数据'); return; }
+        const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
         const classTotalDays = calculateAllStats();
 
         if (currentModule === 'ty') {
