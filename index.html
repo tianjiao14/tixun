@@ -312,20 +312,14 @@
         </div>
 
         <div class="section">
-            <h3 id="dateLabel">今日考勤</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <h3 id="dateLabel" style="margin:0;">📅 考勤与训练日期</h3>
+                <select id="semesterSelect" onchange="manualChangeSemester(this.value)" style="padding: 4px 8px; font-weight: bold; color: #0D47A1; border: 1px solid #2196F3; border-radius: 4px; margin: 0; font-size: 13px;">
+                </select>
+            </div>
             <input type="date" id="datePicker" style="width: 100%; margin-bottom: 10px;">
             <div id="accordionContainer"></div>
         </div>
-<div class="section">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-        <h3 id="dateLabel" style="margin:0;">📅 考勤与训练日期</h3>
-        <!-- 新增：考勤周期切换下拉菜单 -->
-        <select id="semesterSelect" onchange="manualChangeSemester(this.value)" style="padding: 4px 8px; font-weight: bold; color: #0D47A1; border: 1px solid #2196F3; border-radius: 4px; margin: 0; font-size: 13px;">
-        </select>
-    </div>
-    <input type="date" id="datePicker" style="width: 100%; margin-bottom: 10px;">
-    <div id="accordionContainer"></div>
-</div>
         <div class="section" id="exportBlock"></div>
     </div>
 
