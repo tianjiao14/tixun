@@ -378,6 +378,29 @@
 <script>
     // ================== 1. 内置默认标准静态备份库 ==================
     const DEFAULT_TY_STDS = {
+weights: { bmi: 0.15, lung: 0.15, run50: 0.20, jump: 0.10, sit: 0.10, runL: 0.20, str: 0.10 },
+        bmi: {
+            "初一男": [15.4, 22.1, 24.9], "初一女": [14.7, 21.7, 24.4],
+            "初二男": [15.6, 22.5, 25.2], "初二女": [15.2, 22.2, 24.8],
+            "初三男": [15.7, 22.8, 26.0], "初三女": [15.9, 22.6, 25.1],
+            "高一男": [16.4, 23.2, 26.3], "高一女": [16.4, 22.7, 25.2],
+            "高二男": [16.7, 23.7, 26.5], "高二女": [16.8, 23.2, 25.4],
+            "高三男": [17.2, 23.8, 27.3], "高三女": [17.0, 23.3, 25.7]
+        },
+        lung: {
+            "初一男": [[3640,100],[3520,95],[3400,90],[3150,85],[2900,80],[2780,78],[2660,76],[2540,74],[2420,72],[2300,70],[2180,68],[2060,66],[1940,64],[1820,62],[1700,60],[1600,50],[1500,40],[1400,30],[1300,20],[1200,10]],
+            "初二男": [[3940,100],[3820,95],[3700,90],[3450,85],[3200,80],[3080,78],[2960,76],[2840,74],[2720,72],[2600,70],[2480,68],[2360,66],[2240,64],[2120,62],[2000,60],[1890,50],[1780,40],[1670,30],[1560,20],[1450,10]],
+            "初三男": [[4240,100],[4120,95],[4000,90],[3750,85],[3500,80],[3380,78],[3260,76],[3140,74],[3020,72],[2900,70],[2780,68],[2660,66],[2540,64],[2420,62],[2300,60],[2180,50],[2060,40],[1940,30],[1820,20],[1700,10]],
+            "高一男": [[4540,100],[4420,95],[4300,90],[4050,85],[3800,80],[3680,78],[3560,76],[3440,74],[3320,72],[3200,70],[3080,68],[2960,66],[2840,64],[2720,62],[2600,60],[2470,50],[2340,40],[2210,30],[2080,20],[1950,10]],
+            "高二男": [[4740,100],[4620,95],[4500,90],[4250,85],[4000,80],[3880,78],[3760,76],[3640,74],[3520,72],[3400,70],[3280,68],[3160,66],[3040,64],[2920,62],[2800,60],[2660,50],[2520,40],[2380,30],[2240,20],[2100,10]],
+            "高三男": [[4940,100],[4820,95],[4700,90],[4450,85],[4200,80],[4080,78],[3960,76],[3840,74],[3720,72],[3600,70],[3480,68],[3360,66],[3240,64],[3120,62],[3000,60],[2850,50],[2700,40],[2550,30],[2400,20],[2250,10]],
+            "初一女": [[2750,100],[2650,95],[2550,90],[2450,85],[2350,80],[2250,78],[2150,76],[2050,74],[1950,72],[1850,70],[1750,68],[1650,66],[1550,64],[1450,62],[1350,60],[1310,50],[1270,40],[1230,30],[1190,20],[1150,10]],
+            "初二女": [[2900,100],[2850,95],[2800,90],[2650,85],[2500,80],[2400,78],[2300,76],[2200,74],[2100,72],[2000,70],[1900,68],[1800,66],[1700,64],[1600,62],[1500,60],[1460,50],[1420,40],[1380,30],[1340,20],[1300,10]],
+            "初三女": [[3050,100],[3000,95],[2950,90],[2800,85],[2650,80],[2550,78],[2450,76],[2350,74],[2250,72],[2150,70],[2050,68],[1950,66],[1850,64],[1750,62],[1650,60],[1610,50],[1570,40],[1530,30],[1490,20],[1450,10]],
+            "高一女": [[3150,100],[3100,95],[3050,90],[2900,85],[2750,80],[2650,78],[2550,76],[2450,74],[2350,72],[2250,70],[2150,68],[2050,66],[1950,64],[1850,62],[1750,60],[1710,50],[1670,40],[1630,30],[1590,20],[1550,10]],
+            "高二女": [[3250,100],[3200,95],[3150,90],[3000,85],[2850,80],[2750,78],[2650,76],[2550,74],[2450,72],[2350,70],[2250,68],[2150,66],[2050,64],[1950,62],[1850,60],[1810,50],[1770,40],[1730,30],[1690,20],[1650,10]],
+            "高三女": [[3350,100],[3300,95],[3250,90],[3100,85],[2950,80],[2850,78],[2750,76],[2650,74],[2550,72],[2450,70],[2350,68],[2250,66],[2150,64],[2050,62],[1950,60],[1910,50],[1870,40],[1830,30],[1790,20],[1750,10]]
+        },
         run50: { "初一男": [[7.8,100],[7.9,95],[8,90],[8.1,85],[8.2,80],[8.4,78],[8.6,76],[8.8,74],[9,72],[9.2,70],[9.4,68],[9.6,66],[9.8,64],[10,62],[10.2,60],[10.4,50],[10.6,40],[10.8,30],[11,20],[11.2,10]], "初二男": [[7.5,100],[7.6,95],[7.7,90],[7.8,85],[7.9,80],[8.1,78],[8.3,76],[8.5,74],[8.7,72],[8.9,70],[9.1,68],[9.3,66],[9.5,64],[9.7,62],[9.9,60],[10.1,50],[10.3,40],[10.5,30],[10.7,20],[10.9,10]], "初三男": [[7.3,100],[7.4,95],[7.5,90],[7.6,85],[7.7,80],[7.9,78],[8.1,76],[8.3,74],[8.5,72],[8.7,70],[8.9,68],[9.1,66],[9.3,64],[9.5,62],[9.7,60],[9.9,50],[10.1,40],[10.3,30],[10.5,20],[10.7,10]], "高一男": [[7.1,100],[7.2,95],[7.3,90],[7.4,85],[7.5,80],[7.7,78],[7.9,76],[8.1,74],[8.3,72],[8.5,70],[8.7,68],[8.9,66],[9.1,64],[9.3,62],[9.5,60],[9.7,50],[9.9,40],[10.1,30],[10.3,20],[10.5,10]], "高二男": [[7,100],[7.1,95],[7.2,90],[7.3,85],[7.4,80],[7.6,78],[7.8,76],[8,74],[8.2,72],[8.4,70],[8.6,68],[8.8,66],[9,64],[9.2,62],[9.4,60],[9.6,50],[9.8,40],[10,30],[10.2,20],[10.4,10]], "高三男": [[6.8,100],[6.9,95],[7,90],[7.1,85],[7.2,80],[7.4,78],[7.6,76],[7.8,74],[8,72],[8.2,70],[8.4,68],[8.6,66],[8.8,64],[9,62],[9.2,60],[9.4,50],[9.6,40],[9.8,30],[10,20],[10.2,10]], "初一女": [[8.1,100],[8.2,95],[8.3,90],[8.6,85],[8.9,80],[9.1,78],[9.3,76],[9.5,74],[9.7,72],[9.9,70],[10.1,68],[10.3,66],[10.5,64],[10.7,62],[10.9,60],[11.1,50],[11.3,40],[11.5,30],[11.7,20],[11.9,10]], "初二女": [[8,100],[8.1,95],[8.2,90],[8.5,85],[8.8,80],[9,78],[9.2,76],[9.4,74],[9.6,72],[9.8,70],[10,68],[10.2,66],[10.4,64],[10.6,62],[10.8,60],[11,50],[11.2,40],[11.4,30],[11.6,20],[11.8,10]], "初三女": [[7.9,100],[8,95],[8.1,90],[8.4,85],[8.7,80],[8.9,78],[9.1,76],[9.3,74],[9.5,72],[9.7,70],[9.9,68],[10.1,66],[10.3,64],[10.5,62],[10.7,60],[10.9,50],[11.1,40],[11.3,30],[11.5,20],[11.7,10]], "高一女": [[7.8,100],[7.9,95],[8,90],[8.3,85],[8.6,80],[8.8,78],[9,76],[9.2,74],[9.4,72],[9.6,70],[9.8,68],[10,66],[10.2,64],[10.4,62],[10.6,60],[10.8,50],[11,40],[11.2,30],[11.4,20],[11.6,10]], "高二女": [[7.7,100],[7.8,95],[7.9,90],[8.2,85],[8.5,80],[8.7,78],[8.9,76],[9.1,74],[9.3,72],[9.5,70],[9.7,68],[9.9,66],[10.1,64],[10.3,62],[10.5,60],[10.7,50],[10.9,40],[11.1,30],[11.3,20],[11.5,10]], "高三女": [[7.6,100],[7.7,95],[7.8,90],[8.1,85],[8.4,80],[8.6,78],[8.8,76],[9,74],[9.2,72],[9.4,70],[9.6,68],[9.8,66],[10,64],[10.2,62],[10.4,60],[10.6,50],[10.8,40],[11,30],[11.2,20],[11.4,10]] },
         jump: { "初一男": [[225,100],[218,95],[211,90],[203,85],[195,80],[191,78],[187,76],[183,74],[179,72],[175,70],[171,68],[167,66],[163,64],[159,62],[155,60],[150,50],[145,40],[140,30],[135,20],[130,10]], "初二男": [[240,100],[233,95],[226,90],[218,85],[210,80],[206,78],[202,76],[198,74],[194,72],[190,70],[186,68],[182,66],[178,64],[174,62],[170,60],[165,50],[160,40],[155,30],[150,20],[145,10]], "初三男": [[250,100],[245,95],[240,90],[233,85],[225,80],[221,78],[217,76],[213,74],[209,72],[205,70],[201,68],[197,66],[193,64],[189,62],[185,60],[180,50],[175,40],[170,30],[165,20],[160,10]], "高一男": [[260,100],[255,95],[250,90],[243,85],[235,80],[231,78],[227,76],[223,74],[219,72],[215,70],[211,68],[207,66],[203,64],[199,62],[195,60],[190,50],[185,40],[180,30],[175,20],[170,10]], "高二男": [[265,100],[260,95],[255,90],[248,85],[240,80],[236,78],[232,76],[228,74],[224,72],[220,70],[216,68],[212,66],[208,64],[204,62],[200,60],[195,50],[190,40],[185,30],[180,20],[175,10]], "高三男": [[270,100],[265,95],[260,90],[253,85],[245,80],[241,78],[237,76],[233,74],[229,72],[225,70],[221,68],[217,66],[213,64],[209,62],[205,60],[200,50],[195,40],[190,30],[185,20],[180,10]], "初一女": [[196,100],[190,95],[184,90],[177,85],[170,80],[167,78],[164,76],[161,74],[158,72],[155,70],[152,68],[149,66],[146,64],[143,62],[140,60],[135,50],[130,40],[125,30],[120,20],[115,10]], "初二女": [[200,100],[194,95],[188,90],[181,85],[174,80],[171,78],[168,76],[165,74],[162,72],[159,70],[156,68],[153,66],[150,64],[147,62],[144,60],[139,50],[134,40],[129,30],[124,20],[119,10]], "初三女": [[202,100],[196,95],[190,90],[183,85],[176,80],[173,78],[170,76],[167,74],[164,72],[161,70],[158,68],[155,66],[152,64],[149,62],[146,60],[141,50],[136,40],[131,30],[126,20],[121,10]], "高一女": [[204,100],[198,95],[192,90],[185,85],[178,80],[175,78],[172,76],[169,74],[166,72],[163,70],[160,68],[157,66],[154,64],[151,62],[148,60],[143,50],[138,40],[133,30],[128,20],[123,10]], "高二女": [[205,100],[199,95],[193,90],[186,85],[179,80],[176,78],[173,76],[170,74],[167,72],[164,70],[161,68],[158,66],[155,64],[152,62],[149,60],[144,50],[139,40],[134,30],[129,20],[124,10]], "高三女": [[206,100],[200,95],[194,90],[187,85],[180,80],[177,78],[174,76],[171,74],[168,72],[165,70],[162,68],[159,66],[156,64],[153,62],[150,60],[145,50],[140,40],[135,30],[130,20],[125,10]] },
         str: { "初一男": [[13,100],[12,95],[11,90],[10,85],[9,80],[8,76],[7,72],[6,68],[5,64],[4,60],[3,50],[2,40],[1,30]], "初二男": [[14,100],[13,95],[12,90],[11,85],[10,80],[9,76],[8,72],[7,68],[6,64],[5,60],[4,50],[3,40],[2,30],[1,20]], "初三男": [[15,100],[14,95],[13,90],[12,85],[11,80],[10,76],[9,72],[8,68],[7,64],[6,60],[5,50],[4,40],[3,30],[2,20],[1,10]], "高一男": [[16,100],[15,95],[14,90],[13,85],[12,80],[11,76],[10,72],[9,68],[8,64],[7,60],[6,50],[5,40],[4,30],[3,20],[2,10]], "高二男": [[17,100],[16,95],[15,90],[14,85],[13,80],[12,76],[11,72],[10,68],[9,64],[8,60],[7,50],[6,40],[5,30],[4,20],[3,10]], "高三男": [[18,100],[17,95],[16,90],[15,85],[14,80],[13,76],[12,72],[11,68],[10,64],[9,60],[8,50],[7,40],[6,30],[5,20],[4,10]], "初一女": [[50,100],[48,95],[46,90],[43,85],[40,80],[38,78],[36,76],[34,74],[32,72],[30,70],[28,68],[26,66],[24,64],[22,62],[20,60],[18,50],[16,40],[14,30],[12,20],[10,10]], "初二女": [[51,100],[49,95],[47,90],[44,85],[41,80],[39,78],[37,76],[35,74],[33,72],[31,70],[29,68],[27,66],[25,64],[23,62],[21,60],[19,50],[17,40],[15,30],[13,20],[11,10]], "初三女": [[52,100],[50,95],[48,90],[45,85],[42,80],[40,78],[38,76],[36,74],[34,72],[32,70],[30,68],[28,66],[26,64],[24,62],[22,60],[20,50],[18,40],[16,30],[14,20],[12,10]], "高一女": [[53,100],[51,95],[49,90],[46,85],[43,80],[41,78],[39,76],[37,74],[35,72],[33,70],[31,68],[29,66],[27,64],[25,62],[23,60],[21,50],[19,40],[17,30],[15,20],[13,10]], "高二女": [[54,100],[52,95],[50,90],[47,85],[44,80],[42,78],[40,76],[38,74],[36,72],[34,70],[32,68],[30,66],[28,64],[26,62],[24,60],[22,50],[20,40],[18,30],[16,20],[14,10]], "高三女": [[55,100],[53,95],[51,90],[48,85],[45,80],[43,78],[41,76],[39,74],[37,72],[35,70],[33,68],[31,66],[29,64],[27,62],[25,60],[23,50],[21,40],[19,30],[17,20],[15,10]] },
@@ -796,108 +819,152 @@ function manualChangeSemester(targetSem) {
         switchModule('ty'); 
     };
 
-   function queryStandardScore(projectName, rawValue, className, gender) {
-        if (rawValue === undefined || rawValue === null || String(rawValue).trim() === '') return null;
-        let val = parseFloat(rawValue);
-        if (isNaN(val)) return null;
+ function queryStandardScore(projectName, rawValue, className, gender) {
+    if (rawValue === undefined || rawValue === null || String(rawValue).trim() === '') return null;
+    let val = parseFloat(rawValue);
+    if (isNaN(val)) return null;
 
-        initializeSystemStandards();
+    initializeSystemStandards();
 
-        if (previousBusinessModule === 'ty') {
-            let gradeKey = "初一"; 
-            ["初一","初二","初三","高一","高二","高三"].forEach(g => { if(className.includes(g)) gradeKey = g; });
-            const stdKey = `${gradeKey}${gender}`; 
+    if (previousBusinessModule === 'ty') {
+        // 🌟 自动获取升段后的真实年级进行查分
+        const effectiveCls = getEffectiveClassName(className);
+        let gradeKey = "初一"; 
+        ["初一","初二","初三","高一","高二","高三"].forEach(g => { if(effectiveCls.includes(g)) gradeKey = g; });
+        const stdKey = `${gradeKey}${gender}`; 
 
-            let targetProjectCode = "";
-            if (projectName.includes("50米")) targetProjectCode = "run50";
-            else if (projectName.includes("跳远")) targetProjectCode = "jump";
-            else if (projectName.includes("体前屈")) targetProjectCode = "sit";
-            else if (projectName.includes("仰卧起坐") || projectName.includes("引体向上")) targetProjectCode = "str";
-            else if (projectName.includes("1000米") || projectName.includes("800米") || projectName.includes("耐力跑")) {
-                targetProjectCode = "runL";
-                if (String(rawValue).includes('.')) {
-                    let parts = String(rawValue).split('.');
-                    let mins = parseInt(parts[0], 10) || 0;
-                    let secs = parseInt(parts[1], 10) || 0;
-                    val = mins * 60 + secs;
-                }
-            } else {
-                targetProjectCode = projectName;
-            }
-
-            const activePool = currentTYStandards[targetProjectCode];
-            if (!activePool || !activePool[stdKey]) {
-                if (val > 100) return 100;
-                return val < 0 ? 0 : Math.round(val);
-            }
-
-            const ruleList = activePool[stdKey];
-            if (ruleList.length === 0) return 0;
-
-            let isTimeType = targetProjectCode.includes("run") || targetProjectCode.includes("米") || targetProjectCode.includes("跑");
-            
-            if (isTimeType) {
-                if (val <= ruleList[0][0]) return ruleList[0][1];
-                if (val > ruleList[ruleList.length - 1][0]) return 0;
-                for (let i = 0; i < ruleList.length; i++) {
-                    if (val <= ruleList[i][0]) return ruleList[i][1];
-                }
-                return 0;
-            } else {
-                let actualVal = val;
-                if (targetProjectCode === "jump" && val < 5) actualVal = Math.round(val * 100); 
-                if (actualVal >= ruleList[0][0]) return ruleList[0][1];
-                if (actualVal < ruleList[ruleList.length - 1][0]) return 0;
-                for (let i = 0; i < ruleList.length; i++) {
-                    if (actualVal >= ruleList[i][0]) return ruleList[i][1];
-                }
-                return 0;
+        let targetProjectCode = "";
+        if (projectName.toUpperCase().includes("BMI") || projectName.includes("体重指数")) targetProjectCode = "bmi";
+        else if (projectName.includes("肺活量")) targetProjectCode = "lung";
+        else if (projectName.includes("50米")) targetProjectCode = "run50";
+        else if (projectName.includes("跳远")) targetProjectCode = "jump";
+        else if (projectName.includes("体前屈")) targetProjectCode = "sit";
+        else if (projectName.includes("仰卧起坐") || projectName.includes("引体向上")) targetProjectCode = "str";
+        else if (projectName.includes("1000米") || projectName.includes("800米") || projectName.includes("耐力跑")) {
+            targetProjectCode = "runL";
+            if (String(rawValue).includes('.')) {
+                let parts = String(rawValue).split('.');
+                let mins = parseInt(parts[0], 10) || 0;
+                let secs = parseInt(parts[1], 10) || 0;
+                val = mins * 60 + secs;
             }
         } else {
-            let targetProjectCode = "";
-            let isTimeType = false;
-            
-            // 🌟 核心修复：兼容体训队只传 3 个参数导致错位的问题
-            let txGender = gender === undefined ? className : gender; 
-
-            if (projectName.includes("100米") || projectName === "m100") {
-                targetProjectCode = "m100";
-                isTimeType = true;
-            } else if (projectName.includes("三级跳远") || projectName === "jump") {
-                targetProjectCode = "jump";
-                isTimeType = false;
-            } else if (projectName.includes("铅球") || projectName === "shot") {
-                targetProjectCode = "shot";
-                isTimeType = false;
-            } else {
-                targetProjectCode = projectName; 
-                isTimeType = projectName.includes("100") || projectName.includes("m") || projectName.includes("跑") || projectName.includes("秒");
-            }
-
-            const activePool = currentTXStandards[targetProjectCode];
-            // 使用修正后的性别参数 txGender 进行字典取值
-            if (!activePool || !activePool[txGender]) return null;
-
-            const ruleList = activePool[txGender];
-            if(ruleList.length === 0) return 0;
-            
-            if (isTimeType) {
-                if (val <= ruleList[0][0]) return ruleList[0][1];
-                if (val > ruleList[ruleList.length - 1][0]) return 0.0;
-                for (let i = 0; i < ruleList.length; i++) {
-                    if (val <= ruleList[i][0]) return ruleList[i][1];
-                }
-            } else {
-                if (val >= ruleList[ruleList.length - 1][0]) return ruleList[ruleList.length - 1][1];
-                if (val < ruleList[0][0]) return 0.0;
-                for (let i = ruleList.length - 1; i >= 0; i--) {
-                    if (val >= ruleList[i][0]) return ruleList[i][1];
-                }
-            }
-            return 0.0;
+            targetProjectCode = projectName;
         }
-    }
 
+        const activePool = currentTYStandards[targetProjectCode];
+        if (!activePool || !activePool[stdKey]) {
+            if (val > 100) return 100;
+            return val < 0 ? 0 : Math.round(val);
+        }
+
+        const ruleList = activePool[stdKey];
+        if (ruleList.length === 0) return 0;
+
+        if (targetProjectCode === "bmi") {
+            if (Array.isArray(ruleList) && typeof ruleList[0] === 'number') {
+                if (val <= ruleList[0]) return 80;
+                if (val <= ruleList[1]) return 100;
+                if (val <= ruleList[2]) return 80;
+                return 60;
+            } else if (Array.isArray(ruleList[0])) {
+                if (val <= ruleList[0][0]) return ruleList[0][1];
+                if (val <= ruleList[1][0]) return ruleList[1][1];
+                if (val <= ruleList[2][0]) return ruleList[2][1];
+                return ruleList[3] ? ruleList[3][1] : 60;
+            }
+        }
+
+        let isTimeType = targetProjectCode.includes("run") || targetProjectCode.includes("米") || targetProjectCode.includes("跑");
+        
+        if (isTimeType) {
+            if (val <= ruleList[0][0]) return ruleList[0][1];
+            if (val > ruleList[ruleList.length - 1][0]) return 0;
+            for (let i = 0; i < ruleList.length; i++) {
+                if (val <= ruleList[i][0]) return ruleList[i][1];
+            }
+            return 0;
+        } else {
+            let actualVal = val;
+            if (targetProjectCode === "jump" && val < 5) actualVal = Math.round(val * 100); 
+            
+            if (actualVal >= ruleList[0][0]) return ruleList[0][1];
+            if (actualVal < ruleList[ruleList.length - 1][0]) return 0;
+            for (let i = 0; i < ruleList.length; i++) {
+                if (actualVal >= ruleList[i][0]) return ruleList[i][1];
+            }
+            return 0;
+        }
+    } else {
+        let targetProjectCode = "";
+        let isTimeType = false;
+        let txGender = gender === undefined ? className : gender; 
+
+        if (projectName.includes("100米") || projectName === "m100") {
+            targetProjectCode = "m100";
+            isTimeType = true;
+        } else if (projectName.includes("三级跳远") || projectName === "jump") {
+            targetProjectCode = "jump";
+            isTimeType = false;
+        } else if (projectName.includes("铅球") || projectName === "shot") {
+            targetProjectCode = "shot";
+            isTimeType = false;
+        } else {
+            targetProjectCode = projectName; 
+            isTimeType = projectName.includes("100") || projectName.includes("m") || projectName.includes("跑") || projectName.includes("秒");
+        }
+
+        const activePool = currentTXStandards[targetProjectCode];
+        if (!activePool || !activePool[txGender]) return null;
+
+        const ruleList = activePool[txGender];
+        if(ruleList.length === 0) return 0;
+        
+        if (isTimeType) {
+            if (val <= ruleList[0][0]) return ruleList[0][1];
+            if (val > ruleList[ruleList.length - 1][0]) return 0.0;
+            for (let i = 0; i < ruleList.length; i++) {
+                if (val <= ruleList[i][0]) return ruleList[i][1];
+            }
+        } else {
+            if (val >= ruleList[ruleList.length - 1][0]) return ruleList[ruleList.length - 1][1];
+            if (val < ruleList[0][0]) return 0.0;
+            for (let i = ruleList.length - 1; i >= 0; i--) {
+                if (val >= ruleList[i][0]) return ruleList[i][1];
+            }
+        }
+        return 0.0;
+    }
+}
+function calculateFitnessTotalScore(scoresObj, className, gender) {
+    if (!scoresObj) return { score: 0, level: '不及格' };
+
+    const getScore = (nameKeywords) => {
+        for (let key in scoresObj) {
+            if (nameKeywords.some(kw => key.includes(kw))) {
+                let s = queryStandardScore(key, scoresObj[key], className, gender);
+                return s !== null ? s : 0;
+            }
+        }
+        return 0;
+    };
+
+    const sBMI = getScore(["BMI", "体重指数"]);
+    const sVital = getScore(["肺活量"]);
+    const s50m = getScore(["50米"]);
+    const sSit = getScore(["体前屈"]);
+    const sJump = getScore(["跳远"]);
+    const sStr = gender === '男' ? getScore(["引体"]) : getScore(["仰卧"]);
+    const sRunL = gender === '男' ? getScore(["1000米"]) : getScore(["800米"]);
+
+    const total = (sBMI * 0.15) + (sVital * 0.15) + (s50m * 0.20) + (sSit * 0.10) + 
+                  (sJump * 0.10) + (sStr * 0.10) + (sRunL * 0.20);
+    const finalScore = Math.round(total * 10) / 10;
+    return {
+        score: finalScore,
+        level: getLevelText(finalScore)
+    };
+}
     // ================== 4. ⚙️评分标准可视化配置编辑器逻辑 ==================
 let defaultStandardsVisible = false;
     function toggleDefaultStandardsDisplay() {
@@ -921,7 +988,7 @@ let defaultStandardsVisible = false;
         container.innerHTML = '';
         
         // 💡 新增：定义系统两套体系各自的内置项目特征代码
-        const builtInTY = ['run50', 'jump', 'sit', 'str', 'runL'];
+        const builtInTY = ['bmi', 'lung', 'run50', 'jump', 'sit', 'str', 'runL'];
         const builtInTX = ['m100', 'jump', 'shot'];
         
         if(sysType === 'ty') {
@@ -1199,7 +1266,6 @@ let defaultStandardsVisible = false;
     document.getElementById('fileStatus').innerText = "正在智能追加解析...";
     
     const reader = new FileReader();
-    // 💡 智能判断：如果是 CSV 文件，用文本方式读取；如果是 Excel，用二进制读取
     const isCSV = file.name.endsWith('.csv');
     
     reader.onload = function(evt) {
@@ -1208,10 +1274,8 @@ let defaultStandardsVisible = false;
             let workbook;
             
             if (isCSV) {
-                // 解析 CSV 文本
                 workbook = XLSX.read(data, { type: 'string' });
             } else {
-                // 解析 标准 Excel 二进制
                 workbook = XLSX.read(data, { type: 'binary' });
             }
             
@@ -1221,7 +1285,6 @@ let defaultStandardsVisible = false;
             const firstRowKeys = Object.keys(json[0]);
             let classField = "", nameField = "", genderField = "";
 
-            // 模糊包含匹配，通杀所有带括号的表头
             firstRowKeys.forEach(key => {
                 let cleanedKey = String(key).replace(/\s+/g, ""); 
                 if (cleanedKey.includes("班级") || cleanedKey.includes("队伍")) classField = key;
@@ -1236,8 +1299,9 @@ let defaultStandardsVisible = false;
             }
 
             const projectKeys = firstRowKeys.filter(k => k !== classField && k !== nameField && k !== genderField && k !== '__rowNum__');
-           let addStuCount = 0;
+            let addStuCount = 0;
             let updateScoreCount = 0;
+            const curSchoolYear = getSchoolYear(document.getElementById('datePicker').value);
 
             if (currentModule === 'ty') {
                 json.forEach(row => {
@@ -1246,6 +1310,15 @@ let defaultStandardsVisible = false;
                     const gender = (genderField && row[genderField]) ? String(row[genderField]).trim() : '男';
 
                     if (!cls || !name) return;
+
+                    // 🌟 记录班级首次录入时的基准学年
+                    if (!localStorage.getItem(`base_year_${cls}`)) {
+                        let offset = 0;
+                        if (cls.includes("高二") || cls.includes("初二")) offset = 1;
+                        if (cls.includes("高三") || cls.includes("初三")) offset = 2;
+                        localStorage.setItem(`base_year_${cls}`, curSchoolYear - offset);
+                    }
+
                     if (!students[cls]) students[cls] = [];
 
                     let studentObj = students[cls].find(s => s.name === name);
@@ -1261,8 +1334,33 @@ let defaultStandardsVisible = false;
                             updateScoreCount++;
                         }
                     });
+
+                    let rawHeight = null;
+                    let rawWeight = null;
+                    firstRowKeys.forEach(k => {
+                        let cleanK = String(k).replace(/\s+/g, "");
+                        if (cleanK.includes("身高")) rawHeight = parseFloat(row[k]);
+                        if (cleanK.includes("体重") && !cleanK.toUpperCase().includes("BMI") && !cleanK.includes("指数")) rawWeight = parseFloat(row[k]);
+                    });
+
+                    if (rawHeight && rawWeight && !isNaN(rawHeight) && !isNaN(rawWeight)) {
+                        let heightInMeter = rawHeight > 3 ? (rawHeight / 100) : rawHeight;
+                        if (heightInMeter > 0) {
+                            let calculatedBMI = (rawWeight / (heightInMeter * heightInMeter)).toFixed(1);
+                            studentObj.scores["体重指数(BMI)"] = calculatedBMI;
+                            studentObj.scores["身高"] = String(rawHeight);
+                            studentObj.scores["体重"] = String(rawWeight);
+                            updateScoreCount++;
+                        }
+                    }
+
+                    firstRowKeys.forEach(k => {
+                        if (k.includes("肺活量") && row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+                            studentObj.scores["肺活量"] = String(row[k]).trim();
+                        }
+                    });
                 });
-                alert(`🎉 名册数据同步完成！\n新追加登记：${addStuCount} 人\n识别并追加更新项目成绩：${updateScoreCount} 项次`);
+                alert(`🎉 名册与成绩数据同步完成！\n新追加登记：${addStuCount} 人\n更新/计算成绩项：${updateScoreCount} 项次\n(含身高体重自动折算 BMI 及肺活量)`);
             } else if (currentModule === 'tx') {
                 if (!scoreHistory[currentMonth]) scoreHistory[currentMonth] = {};
 
@@ -1305,7 +1403,6 @@ let defaultStandardsVisible = false;
                 });
                 alert(`🎉 名册归档完毕！\n新导入/同步队员：${addStuCount} 人\n成功追加锁定 ${currentMonth} 测试流水：${updateScoreCount} 项次`);
             } else if (currentModule === 'db') {
-                // 🌟 代表队：只同步最精简的花名册结构
                 json.forEach(row => {
                     const cls = row[classField] ? String(row[classField]).trim() : '';
                     const name = row[nameField] ? String(row[nameField]).trim() : '';
@@ -1333,11 +1430,11 @@ let defaultStandardsVisible = false;
     };
     
     if (isCSV) {
-        reader.readAsText(file, "gbk"); // 兼容中国地区特有的 Excel 导出 CSV 编码
+        reader.readAsText(file, "gbk");
     } else {
         reader.readAsBinaryString(file);
     }
-}
+  }
 
 
     function quickAddStudent(className) {
@@ -1388,10 +1485,13 @@ let defaultStandardsVisible = false;
             const header = document.createElement('div');
             header.className = 'class-header';
             
+            // 🌟 核心：显示当前日期下计算出的升学年级
+            const displayClassName = getEffectiveClassName(className, currentDate);
+
             if(currentModule === 'ty') {
-                header.innerText = `${className} (${students[className].length}人 / 累积上课${totalClasses}节)`;
+                header.innerText = `${displayClassName} (${students[className].length}人 / 累积上课${totalClasses}节)`;
             } else {
-                header.innerText = `${className} (${students[className].length}人 / 总参训${totalClasses}课时)`;
+                header.innerText = `${displayClassName} (${students[className].length}人 / 总参训${totalClasses}课时)`;
             }
             header.onclick = () => toggleClass(classGroup, className);
 
@@ -1447,7 +1547,7 @@ let defaultStandardsVisible = false;
                         let p1 = queryStandardScore("100米", mData["100米"]||mData["m100"], sGender) || 0;
                         let p2 = queryStandardScore("立定三级跳远", mData["立定三级跳远"]||mData["jump"], sGender) || 0;
                         let p3 = queryStandardScore("铅球", mData["铅球"]||mData["shot"], sGender) || 0;
-                        let p4 = queryTxSpecialScore(mData["专项名称"], mData["专项成绩"], sGender); // 引入专项算分
+                        let p4 = queryTxSpecialScore(mData["专项名称"], mData["专项成绩"], sGender);
                         let totalScore = p1 + p2 + p3 + p4;
                         
                         let lvlText = getTxLevelText(totalScore);
@@ -1456,7 +1556,6 @@ let defaultStandardsVisible = false;
                         rightTagHtml = '';
                     }
                 } else {
-                    // 🌟 代表队：不需要任何成绩状态显示标签
                     isDanger = parseFloat(rate) < 90;
                     rightTagHtml = '';
                 }
@@ -1503,12 +1602,12 @@ let defaultStandardsVisible = false;
             actionBlock.className = 'action-block';
             if(currentModule === 'ty') {
                 actionBlock.innerHTML = `
-                    <button onclick="submitClassAttendance('${className}')" style="background-color: var(--accent); flex: 3; margin:0;">确认并提交 ${className} 考勤</button>
+                    <button onclick="submitClassAttendance('${className}')" style="background-color: var(--accent); flex: 3; margin:0;">确认并提交 ${displayClassName} 考勤</button>
                     <button onclick="deleteClass('${className}')" style="background-color: #90A4AE; flex: 1; margin:0; font-size:13px;">🗑️ 删班</button>
                 `;
             } else {
                 actionBlock.innerHTML = `
-                    <button onclick="submitClassAttendance('${className}')" style="background-color: var(--accent); flex: 3; margin:0;">确认并保存今日 ${className} 考勤状态</button>
+                    <button onclick="submitClassAttendance('${className}')" style="background-color: var(--accent); flex: 3; margin:0;">确认并保存今日 ${displayClassName} 考勤状态</button>
                     <button onclick="deleteClass('${className}')" style="background-color: #90A4AE; flex: 1; margin:0; font-size:13px;">解散全队</button>
                 `;
             }
@@ -1538,17 +1637,20 @@ let defaultStandardsVisible = false;
         const currentDate = document.getElementById('datePicker').value;
         const currentMonth = typeof getYearMonthKey === 'function' ? getYearMonthKey(currentDate) : currentDate.substring(0,7);
 
-        if(currentModule === 'ty') {
-            // =========== 体育课单轨录入视图 ===========
-            let allowedProjs = ["50米", "立定跳远", "坐位体前屈"];
-            if (gender === '男') allowedProjs.push("引体向上", "1000米");
-            else allowedProjs.push("仰卧起坐", "800米");
+       if(currentModule === 'ty') {
+       let allowedProjs = ["50米", "立定跳远", "坐位体前屈"];
+    if (gender === '男') allowedProjs.push("引体向上", "1000米");
+    else allowedProjs.push("仰卧起坐", "800米");
 
-            if (studentObj.scores) {
-                Object.keys(studentObj.scores).forEach(p => {
-                    if (!allowedProjs.includes(p)) allowedProjs.push(p);
-                });
+    if (studentObj.scores) {
+        Object.keys(studentObj.scores).forEach(p => {
+            let upper = p.toUpperCase();
+            if (upper.includes("BMI") || upper.includes("肺活量") || upper.includes("身高") || upper.includes("体重")) {
+                return;
             }
+            if (!allowedProjs.includes(p)) allowedProjs.push(p);
+        });
+    }
 
             let currentScores = studentObj.scores || {};
             let fieldsHtml = '';
@@ -1573,12 +1675,20 @@ let defaultStandardsVisible = false;
                 <h3 style="margin-top:5px; text-align:center;">🏆 个人成绩单轨录入</h3>
                 <p style="text-align:center; font-size:14px; margin-bottom:10px;">学生：<b>${studentName}</b> (${className} / <span style="color:#e91e63;font-weight:bold;">${gender}</span>)</p>
                 
-                <div class="live-total-score-wrapper">
-                    <span style="font-size: 14px; font-weight: 500;">期末总分：</span>
-                    <b id="modalLiveTotalScore" style="font-size: 22px;">--</b>
-                    <span id="modalLiveTotalLevel" style="font-size: 13px; font-weight: bold; margin-left:6px; background:#fff; padding:2px 6px; border-radius:4px;">--</span>
-                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">(计算公式：项目平均分×80% + 考勤分×20%)</p>
-                </div>
+                <div class="live-total-score-wrapper" style="display: flex; gap: 10px; justify-content: space-around; padding: 12px 6px;">
+    <div style="flex: 1; border-right: 1px dashed #90CAF9; padding-right: 5px;">
+        <div style="font-size: 13px; font-weight: bold; color: #1565C0;">📚 期末总评</div>
+        <div style="margin: 4px 0;"><b id="modalLiveTotalScore" style="font-size: 22px;">--</b></div>
+        <span id="modalLiveTotalLevel" class="level-badge" style="display:inline-block;">--</span>
+        <div style="font-size: 10px; color: #777; margin-top: 4px;">(项目均分80% + 考勤20%)</div>
+    </div>
+    <div style="flex: 1; padding-left: 5px;">
+        <div style="font-size: 13px; font-weight: bold; color: #E65100;">🏃 体测健康总分</div>
+        <div style="margin: 4px 0;"><b id="modalLiveFitnessScore" style="font-size: 22px; color: #E65100;">--</b></div>
+        <span id="modalLiveFitnessLevel" class="level-badge" style="display:inline-block;">--</span>
+        <div style="font-size: 10px; color: #777; margin-top: 4px;">(国标加权算分)</div>
+    </div>
+</div>
                 
                 <div id="modalScoreFieldsContainer" style="max-height:240px; overflow-y:auto; padding-right:5px; border-bottom:1px dashed #eee; margin-bottom:10px;">
                     ${fieldsHtml}
@@ -1810,44 +1920,47 @@ let defaultStandardsVisible = false;
     }
 
     function refreshModalTotalScore(className, gender) {
-        const fields = document.querySelectorAll('.student-score-field');
-        let validProjectsSum = 0;
-        let validProjectsCount = 0; 
+    const fields = document.querySelectorAll('.student-score-field');
+    let tempScores = {};
+    let validProjectsSum = 0;
+    let validProjectsCount = 0; 
 
-        fields.forEach(f => {
-            const proj = f.getAttribute('data-proj');
-            const val = f.value.trim();
-            const calculatedPoints = queryStandardScore(proj, val, className, gender);
-            if (calculatedPoints !== null) {
-                validProjectsSum += calculatedPoints;
-                validProjectsCount++;
-            }
-        });
+    fields.forEach(f => {
+        const proj = f.getAttribute('data-proj');
+        const val = f.value.trim();
+        tempScores[proj] = val;
+        const calculatedPoints = queryStandardScore(proj, val, className, gender);
+        if (calculatedPoints !== null) {
+            validProjectsSum += calculatedPoints;
+            validProjectsCount++;
+        }
+    });
 
-        const studentName = document.querySelector('#modalCalendarBody b').innerText;
-        const classTotalDays = calculateAllStats();
-        const totalClasses = classTotalDays[className] || 0;
-        
-        const s = cachedStats[className][studentName] || { leave: 0, absent: 0, late: 0, early: 0 };
-        const totalMissedScore = (s.absent * 1.0) + (s.leave * 0.5) + (s.late * 0.25) + (s.early * 0.25);
-        let effectiveAttendance = totalClasses - totalMissedScore;
-        if (effectiveAttendance < 0) effectiveAttendance = 0;
-        const attendanceRateNum = totalClasses > 0 ? (effectiveAttendance / totalClasses) : 1.0;
-        const attendanceFinalScore = Math.round(attendanceRateNum * 100);
+    // 1. 计算期末总分
+    const studentName = document.querySelector('#modalCalendarBody b').innerText;
+    const classTotalDays = calculateAllStats();
+    const totalClasses = classTotalDays[className] || 0;
+    const s = cachedStats[className][studentName] || { leave: 0, absent: 0, late: 0, early: 0 };
+    const totalMissedScore = (s.absent * 1.0) + (s.leave * 0.5) + (s.late * 0.25) + (s.early * 0.25);
+    let effectiveAttendance = Math.max(0, totalClasses - totalMissedScore);
+    const attendanceFinalScore = Math.round((totalClasses > 0 ? effectiveAttendance / totalClasses : 1.0) * 100);
 
-        let sportsAverageScore = validProjectsCount > 0 ? (validProjectsSum / validProjectsCount) : 0;
-        let finalTotalScore = Math.round((sportsAverageScore * 0.8) + (attendanceFinalScore * 0.2));
+    let sportsAverageScore = validProjectsCount > 0 ? (validProjectsSum / validProjectsCount) : 0;
+    let finalTotalScore = Math.round((sportsAverageScore * 0.8) + (attendanceFinalScore * 0.2));
 
-        document.getElementById('modalLiveTotalScore').innerText = `${finalTotalScore} 分`;
-        const levelText = getLevelText(finalTotalScore);
-        const lvlBadge = document.getElementById('modalLiveTotalLevel');
-        lvlBadge.innerText = levelText;
+    document.getElementById('modalLiveTotalScore').innerText = `${finalTotalScore} 分`;
+    let lvlText = getLevelText(finalTotalScore);
+    let lvlElem = document.getElementById('modalLiveTotalLevel');
+    lvlElem.innerText = lvlText;
+    lvlElem.className = "level-badge " + getLevelClass(lvlText);
 
-        if(levelText === "优秀") lvlBadge.style.color = "#2E7D32";
-        else if(levelText === "良好") lvlBadge.style.color = "#1565C0";
-        else if(levelText === "及格") lvlBadge.style.color = "#EF6C00";
-        else lvlBadge.style.color = "#C62828";
-    }
+    // 2. 计算体质健康测试总分
+    const fitness = calculateFitnessTotalScore(tempScores, className, gender);
+    document.getElementById('modalLiveFitnessScore').innerText = `${fitness.score} 分`;
+    let fitElem = document.getElementById('modalLiveFitnessLevel');
+    fitElem.innerText = fitness.level;
+    fitElem.className = "level-badge " + getLevelClass(fitness.level);
+}
 
    function saveStudentSingleScores(className, studentName) {
         if(currentModule === 'ty') {
@@ -2007,12 +2120,18 @@ let defaultStandardsVisible = false;
         const classNames = Object.keys(students);
         if (classNames.length === 0) { alert('暂无可用数据'); return; }
         const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
+        const currentDate = document.getElementById('datePicker').value;
         const classTotalDays = calculateAllStats();
 
         if (currentModule === 'ty') {
             let activeProjectsList = ["50米", "立定跳远", "坐位体前屈"];
+            ["身高", "体重", "体重指数(BMI)", "肺活量"].forEach(p => {
+                let hasData = Object.values(students).some(cl => cl.some(st => st.scores && st.scores[p]));
+                if (hasData && !activeProjectsList.includes(p)) activeProjectsList.unshift(p);
+            });
+
             Object.keys(currentTYStandards).forEach(p => {
-                if(!activeProjectsList.includes(p) && p!=='run50' && p!=='jump' && p!=='sit' && p!=='str' && p!=='runL') {
+                if(!activeProjectsList.includes(p) && p!=='run50' && p!=='jump' && p!=='sit' && p!=='str' && p!=='runL' && p!=='bmi' && p!=='lung' && p!=='weights') {
                     activeProjectsList.push(p);
                 }
             });
@@ -2020,17 +2139,20 @@ let defaultStandardsVisible = false;
             let row1 = ["序号", "班级", "姓名", "性别"];
             let row2 = ["", "", "", ""];
             activeProjectsList.forEach(proj => { row1.push(proj, ""); row2.push("成绩", "得分"); });
-            row1.push("考勤分", "总分", "等级");
-            row2.push("", "", "");
+            row1.push("考勤分", "期末总分", "期末等级", "体测健康总分", "体测等级");
+            row2.push("", "", "", "", "");
             let dataRows = [row1, row2];
 
             classNames.forEach(className => {
                 const totalClasses = classTotalDays[className] || 0;
+                // 🌟 导出时写入升级后的班级名
+                const displayClassName = getEffectiveClassName(className, currentDate);
+
                 students[className].forEach((studentObj, index) => {
                     const sName = studentObj.name;
                     const sGender = studentObj.gender;
                     const sScores = studentObj.scores || {};
-                    let rowCells = [index + 1, className, sName, sGender];
+                    let rowCells = [index + 1, displayClassName, sName, sGender];
                     let validProjectsSum = 0;
                     let validProjectsCount = 0;
 
@@ -2051,7 +2173,8 @@ let defaultStandardsVisible = false;
                     let sportsAverageScore = validProjectsCount > 0 ? (validProjectsSum / validProjectsCount) : 0;
                     let finalTotalScore = Math.round((sportsAverageScore * 0.8) + (attendanceFinalScore * 0.2));
 
-                    rowCells.push(attendanceFinalScore, finalTotalScore, getLevelText(finalTotalScore));
+                    const fitnessResult = calculateFitnessTotalScore(sScores, className, sGender);
+                    rowCells.push(attendanceFinalScore, finalTotalScore, getLevelText(finalTotalScore), fitnessResult.score, fitnessResult.level);
                     dataRows.push(rowCells);
                 });
             });
@@ -2059,8 +2182,7 @@ let defaultStandardsVisible = false;
             const ws = XLSX.utils.aoa_to_sheet(dataRows);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "期末体育成绩册");
-            const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
-XLSX.writeFile(wb, `体育期末成绩册_${activeSem}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            XLSX.writeFile(wb, `体育期末成绩册_${activeSem}_${new Date().toISOString().slice(0, 10)}.xlsx`);
        } else if (currentModule === 'tx') {
             let sortedMonths = scoreHistory ? Object.keys(scoreHistory).sort() : [];
             let row1 = ["序号", "队伍班级", "姓名", "组别", "累计总出勤率"];
@@ -2069,6 +2191,8 @@ XLSX.writeFile(wb, `体育期末成绩册_${activeSem}_${new Date().toISOString(
 
             classNames.forEach(className => {
                 const totalClasses = classTotalDays[className] || 0;
+                const displayClassName = getEffectiveClassName(className, currentDate);
+
                 students[className].forEach((studentObj, index) => {
                     const sName = studentObj.name;
                     const sGender = studentObj.gender;
@@ -2080,7 +2204,7 @@ XLSX.writeFile(wb, `体育期末成绩册_${activeSem}_${new Date().toISOString(
                     if (effectiveAttendance < 0) effectiveAttendance = 0;
                     const attendanceRate = totalClasses > 0 ? ((effectiveAttendance / totalClasses) * 100).toFixed(0) + "%" : "100%";
 
-                    let rowCells = [index + 1, className, sName, sGender, attendanceRate];
+                    let rowCells = [index + 1, displayClassName, sName, sGender, attendanceRate];
                     sortedMonths.forEach(m => {
                         const monthData = (scoreHistory[m] && scoreHistory[m][historyKey]) ? scoreHistory[m][historyKey] : null;
                         if(monthData) {
@@ -2109,13 +2233,14 @@ XLSX.writeFile(wb, `体育期末成绩册_${activeSem}_${new Date().toISOString(
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "长周期训练册");
             XLSX.writeFile(wb, `体训队训练跟踪表_${activeSem}_${new Date().toISOString().slice(0, 10)}.xlsx`);
-        }else if (currentModule === 'db') {
-            // 🌟 代表队纯考勤大表导出
+        } else if (currentModule === 'db') {
             let row1 = ["序号", "代表队队伍", "队员姓名", "性别", "累计出勤率", "请假节数", "旷课节数", "迟到节数", "早退节数"];
             let dataRows = [row1];
 
             classNames.forEach(className => {
                 const totalClasses = classTotalDays[className] || 0;
+                const displayClassName = getEffectiveClassName(className, currentDate);
+
                 students[className].forEach((studentObj, index) => {
                     const sName = studentObj.name;
                     const sGender = studentObj.gender;
@@ -2126,7 +2251,7 @@ XLSX.writeFile(wb, `体育期末成绩册_${activeSem}_${new Date().toISOString(
                     const attendanceRate = totalClasses > 0 ? ((effectiveAttendance / totalClasses) * 100).toFixed(0) + "%" : "100%";
 
                     dataRows.push([
-                        index + 1, className, sName, sGender, attendanceRate, s.leave, s.absent, s.late, s.early
+                        index + 1, displayClassName, sName, sGender, attendanceRate, s.leave, s.absent, s.late, s.early
                     ]);
                 });
             });
@@ -2332,6 +2457,54 @@ function toggleSpCustomInput() {
             inp.style.display = sel.value === '自定义' ? 'block' : 'none';
         }
     }
+// 获取某日期所属的学年起始年份（以每年9月1日为界）
+// 例如: 2025-08-30 -> 2024学年; 2025-09-01 -> 2025学年
+function getSchoolYear(dateStr) {
+    const d = dateStr ? new Date(dateStr) : new Date();
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    return month >= 9 ? year : year - 1;
+}
+
+// 班级年级自动升段核心算法
+function getUpgradedClassName(baseClassName, baseYear, targetDateStr) {
+    if (!baseClassName) return "";
+    const currentSchoolYear = getSchoolYear(targetDateStr || document.getElementById('datePicker').value);
+    const yearDiff = currentSchoolYear - baseYear;
+
+    if (yearDiff <= 0) return baseClassName;
+
+    const chnNumMap = { "一": 1, "二": 2, "三": 3, "四": 4, "1": 1, "2": 2, "3": 3, "4": 4 };
+    const numToChn = { 1: "一", 2: "二", 3: "三" };
+
+    // 匹配 "高一"、"高二"、"初一"、"初二" 等前缀
+    const match = baseClassName.match(/^(初|高)([一二三123])(.*)$/);
+    if (!match) return baseClassName; // 无法识别年级的名称保持原样
+
+    const section = match[1];      // '初' 或 '高'
+    const currGradeNum = chnNumMap[match[2]]; // 1, 2, 3
+    const restName = match[3];     // '1'、'班' 等后缀
+    const newGradeNum = currGradeNum + yearDiff;
+
+    if (newGradeNum <= 3) {
+        return `${section}${numToChn[newGradeNum]}${restName}`;
+    } else {
+        const graduatedYear = baseYear + (3 - currGradeNum) + 1;
+        return `${section}三(${graduatedYear}届毕业)${restName}`;
+    }
+}
+// 🌟 动态获取班级在当前日期下的升段名称
+function getEffectiveClassName(className, targetDateStr) {
+    if (!className) return "";
+    let baseYear = localStorage.getItem(`base_year_${className}`);
+    // 如果没有记录基准年，自动从班级名字和当前日期初始化基准学年
+    if (!baseYear) {
+        const curDate = targetDateStr || document.getElementById('datePicker').value;
+        baseYear = getSchoolYear(curDate);
+        localStorage.setItem(`base_year_${className}`, baseYear);
+    }
+    return getUpgradedClassName(className, parseInt(baseYear, 10), targetDateStr);
+}
 </script>
 </body>
 </html>
