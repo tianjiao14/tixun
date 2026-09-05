@@ -362,6 +362,8 @@
         <div class="backup-btn-group">
             <button class="btn-secondary" onclick="exportBackupData()">📥 导出备份</button>
             <button class="btn-secondary" onclick="document.getElementById('importFile').click()" style="background-color: #5c6bc0;">📤 导入备份</button>
+            <!-- 🌟 新增：仅清空成绩按钮 -->
+            <button class="btn-secondary" onclick="clearAllScoresOnly()" style="background-color: #FF7043;">🧹 清空成绩</button>
             <button class="btn-danger-sys" onclick="systemReset()">🚨 初始化</button>
             <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importBackupData(event)">
         </div>
@@ -749,7 +751,7 @@ function manualChangeSemester(targetSem) {
         }
         const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
         currentSemester = activeSem;
-        if(mod === 'ty') {
+       if(mod === 'ty') {
             title.innerText = `📋 体育课考勤与成绩管理系统 (${activeSem})`;
             fileWrapper.style.cssText = "border: 2px dashed #4CAF50; background: #f1f8e9; color: #2E7D32;";
             fileStatus.innerText = "🟢 导入/追加 Excel";
@@ -757,7 +759,14 @@ function manualChangeSemester(targetSem) {
             dateLabel.innerText = "📅 今日考勤";
             datePicker.style.cssText = "width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #ccc; border-radius: 5px;";
             dateTip.style.display = 'none';
-            exportBlock.innerHTML = `<button onclick="exportStatsToExcel()" style="background-color: #2E7D32; margin: 0; font-weight: bold; font-size: 16px;">🟢 生成并导出【期末成绩册】 Excel</button>`;
+            // 🌟 核心改动：双导出按钮并列
+            exportBlock.innerHTML = `
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="exportStatsToExcel()" style="background-color: #2E7D32; margin: 0; font-weight: bold; font-size: 14px; flex: 1;">🟢 导出【期末成绩册】</button>
+                    <button onclick="exportFitnessReportToExcel()" style="background-color: #E65100; margin: 0; font-weight: bold; font-size: 14px; flex: 1;">🏃 导出【体质健康测试表】</button>
+                </div>
+            `;
+    
         } else if(mod === 'tx') {
             title.innerText = `📋 体训生考勤与成绩管理系统 (${activeSem})`;
             fileWrapper.style.cssText = "border: 2px dashed #2196F3; background: #E3F2FD; color: #0D47A1;";
@@ -1280,7 +1289,11 @@ let defaultStandardsVisible = false;
             }
             
             const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            if (json.length === 0) { alert('表格内容为空！'); document.getElementById('fileStatus').innerText = "❌ 导入失败(空表格)"; return; }
+            if (json.length === 0) { 
+                alert('表格内容为空！'); 
+                document.getElementById('fileStatus').innerText = "❌ 导入失败(空表格)"; 
+                return; 
+            }
             
             const firstRowKeys = Object.keys(json[0]);
             let classField = "", nameField = "", genderField = "";
@@ -1298,7 +1311,14 @@ let defaultStandardsVisible = false;
                 return;
             }
 
-            const projectKeys = firstRowKeys.filter(k => k !== classField && k !== nameField && k !== genderField && k !== '__rowNum__');
+            // 🌟 1. 严格排除：班级、姓名、性别、序号/编号，避免“序号”被录入成项目成绩
+            const projectKeys = firstRowKeys.filter(k => {
+                let ck = String(k).replace(/\s+/g, "");
+                if (k === classField || k === nameField || k === genderField || k === '__rowNum__') return false;
+                if (ck.includes("序号") || ck.includes("编号") || ck.toLowerCase() === "id" || ck.toLowerCase() === "no") return false;
+                return true;
+            });
+
             let addStuCount = 0;
             let updateScoreCount = 0;
             const curSchoolYear = getSchoolYear(document.getElementById('datePicker').value);
@@ -1311,7 +1331,6 @@ let defaultStandardsVisible = false;
 
                     if (!cls || !name) return;
 
-                    // 🌟 记录班级首次录入时的基准学年
                     if (!localStorage.getItem(`base_year_${cls}`)) {
                         let offset = 0;
                         if (cls.includes("高二") || cls.includes("初二")) offset = 1;
@@ -1326,21 +1345,30 @@ let defaultStandardsVisible = false;
                         studentObj = { name: name, gender: gender, scores: {} };
                         students[cls].push(studentObj);
                         addStuCount++;
+                    } else {
+                        // 确保老学生拥有 scores 字典
+                        if (!studentObj.scores) studentObj.scores = {};
                     }
 
+                    // 🌟 2. 增量追加成绩：只更新在当前 Excel 中有值的科目，不覆盖旧科目
                     projectKeys.forEach(proj => {
-                        if (row[proj] !== undefined && row[proj] !== null && String(row[proj]).trim() !== '') {
-                            studentObj.scores[proj] = String(row[proj]).trim();
+                        let valStr = row[proj] !== undefined && row[proj] !== null ? String(row[proj]).trim() : '';
+                        if (valStr !== '') {
+                            studentObj.scores[proj] = valStr;
                             updateScoreCount++;
                         }
                     });
 
+                    // 🌟 3. 身高体重追加计算 BMI
                     let rawHeight = null;
                     let rawWeight = null;
                     firstRowKeys.forEach(k => {
                         let cleanK = String(k).replace(/\s+/g, "");
-                        if (cleanK.includes("身高")) rawHeight = parseFloat(row[k]);
-                        if (cleanK.includes("体重") && !cleanK.toUpperCase().includes("BMI") && !cleanK.includes("指数")) rawWeight = parseFloat(row[k]);
+                        let valStr = row[k] !== undefined && row[k] !== null ? String(row[k]).trim() : '';
+                        if (valStr !== '') {
+                            if (cleanK.includes("身高")) rawHeight = parseFloat(valStr);
+                            if (cleanK.includes("体重") && !cleanK.toUpperCase().includes("BMI") && !cleanK.includes("指数")) rawWeight = parseFloat(valStr);
+                        }
                     });
 
                     if (rawHeight && rawWeight && !isNaN(rawHeight) && !isNaN(rawWeight)) {
@@ -1354,13 +1382,15 @@ let defaultStandardsVisible = false;
                         }
                     }
 
+                    // 🌟 4. 肺活量追加
                     firstRowKeys.forEach(k => {
-                        if (k.includes("肺活量") && row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
-                            studentObj.scores["肺活量"] = String(row[k]).trim();
+                        let valStr = row[k] !== undefined && row[k] !== null ? String(row[k]).trim() : '';
+                        if (k.includes("肺活量") && valStr !== '') {
+                            studentObj.scores["肺活量"] = valStr;
                         }
                     });
                 });
-                alert(`🎉 名册与成绩数据同步完成！\n新追加登记：${addStuCount} 人\n更新/计算成绩项：${updateScoreCount} 项次\n(含身高体重自动折算 BMI 及肺活量)`);
+                alert(`🎉 名册与成绩追加完成！\n新登记学生：${addStuCount} 人\n追加/更新成绩项：${updateScoreCount} 项次\n(原有成绩均完整保留)`);
             } else if (currentModule === 'tx') {
                 if (!scoreHistory[currentMonth]) scoreHistory[currentMonth] = {};
 
@@ -1388,14 +1418,13 @@ let defaultStandardsVisible = false;
                         else if (cleanedProj.includes("三级跳远") || cleanedProj.includes("jump")) targetMatchCode = "立定三级跳远";
                         else if (cleanedProj.includes("铅球") || cleanedProj.includes("shot")) targetMatchCode = "铅球";
 
-                        if (targetMatchCode && row[proj] !== undefined && row[proj] !== null && String(row[proj]).trim() !== '') {
+                        let valStr = row[proj] !== undefined && row[proj] !== null ? String(row[proj]).trim() : '';
+                        if (targetMatchCode && valStr !== '') {
                             if (!scoreHistory[currentMonth][historyKey]) scoreHistory[currentMonth][historyKey] = {};
                             
-                            let finalVal = String(row[proj]).trim();
-                            scoreHistory[currentMonth][historyKey][targetMatchCode] = finalVal;
-                            
+                            scoreHistory[currentMonth][historyKey][targetMatchCode] = valStr;
                             let aliasKey = (targetMatchCode === "100米") ? "m100" : ((targetMatchCode === "立定三级跳远") ? "jump" : "shot");
-                            scoreHistory[currentMonth][historyKey][aliasKey] = finalVal;
+                            scoreHistory[currentMonth][historyKey][aliasKey] = valStr;
                             
                             updateScoreCount++;
                         }
@@ -1620,10 +1649,9 @@ let defaultStandardsVisible = false;
     }
 
     // ================== 8. 多功能单人弹出层输入端 ==================
-    function openScoreModal(className, studentName) {
+ function openScoreModal(className, studentName) {
         event.stopPropagation();
         
-        // 🌟 代表队专属劫持：不需要考勤以外的功能，点击姓名直接弹出考勤面板
         if (currentModule === 'db') {
             showStudentCalendar(className, studentName);
             return;
@@ -1637,32 +1665,49 @@ let defaultStandardsVisible = false;
         const currentDate = document.getElementById('datePicker').value;
         const currentMonth = typeof getYearMonthKey === 'function' ? getYearMonthKey(currentDate) : currentDate.substring(0,7);
 
-       if(currentModule === 'ty') {
-       let allowedProjs = ["50米", "立定跳远", "坐位体前屈"];
-    if (gender === '男') allowedProjs.push("引体向上", "1000米");
-    else allowedProjs.push("仰卧起坐", "800米");
-
-    if (studentObj.scores) {
-        Object.keys(studentObj.scores).forEach(p => {
-            let upper = p.toUpperCase();
-            if (upper.includes("BMI") || upper.includes("肺活量") || upper.includes("身高") || upper.includes("体重")) {
-                return;
-            }
-            if (!allowedProjs.includes(p)) allowedProjs.push(p);
-        });
-    }
-
+        if(currentModule === 'ty') {
             let currentScores = studentObj.scores || {};
+            
+            // 🌟 1. 核心判断：检查该学生是否导入过身体形态与机能数据
+            const hasBmiData = currentScores["体重指数(BMI)"] !== undefined || currentScores["BMI"] !== undefined || (currentScores["身高"] && currentScores["体重"]);
+            const hasLungData = currentScores["肺活量"] !== undefined;
+
+            let allowedProjs = [];
+            // 如果存在导入数据，优先排在最上面展示
+            if (hasBmiData) allowedProjs.push("体重指数(BMI)");
+            if (hasLungData) allowedProjs.push("肺活量");
+
+            // 追加常规测试科目
+            allowedProjs.push("50米", "立定跳远", "坐位体前屈");
+            if (gender === '男') allowedProjs.push("引体向上", "1000米");
+            else allowedProjs.push("仰卧起坐", "800米");
+
+            // 追加自定义添加的其它科目（排除身高体重等元数据文本）
+            Object.keys(currentScores).forEach(p => {
+                let upper = p.toUpperCase();
+                if (upper === "身高" || upper === "体重" || upper === "BMI") return;
+                if (!allowedProjs.includes(p)) allowedProjs.push(p);
+            });
+
             let fieldsHtml = '';
             allowedProjs.forEach(proj => {
                 let val = currentScores[proj] !== undefined ? currentScores[proj] : '';
+                // 兼容历史可能存为 BMI 键名的情况
+                if (proj === "体重指数(BMI)" && !val && currentScores["BMI"]) val = currentScores["BMI"];
+
                 let initialScore = queryStandardScore(proj, val, className, gender);
                 let displayScore = initialScore !== null ? initialScore : 0;
                 let badgeCls = initialScore !== null && initialScore > 0 ? 'has-val' : '';
 
+                // 对 BMI 额外显示其换算前的身高体重备注提示
+                let subHint = '';
+                if (proj === "体重指数(BMI)" && currentScores["身高"] && currentScores["体重"]) {
+                    subHint = `<span style="font-size:10px; color:#888; font-weight:normal;"> (${currentScores["身高"]}cm/${currentScores["体重"]}kg)</span>`;
+                }
+
                 fieldsHtml += `
                     <div class="score-row">
-                        <label>${proj}:</label>
+                        <label style="font-size:13px;">${proj}${subHint}:</label>
                         <input type="text" id="modal-score-${proj}" class="student-score-field" 
                                inputmode="decimal" data-proj="${proj}" value="${val}" placeholder="未录入"
                                oninput="updateLiveScore(this, '${className}', '${gender}')">
@@ -1676,21 +1721,21 @@ let defaultStandardsVisible = false;
                 <p style="text-align:center; font-size:14px; margin-bottom:10px;">学生：<b>${studentName}</b> (${className} / <span style="color:#e91e63;font-weight:bold;">${gender}</span>)</p>
                 
                 <div class="live-total-score-wrapper" style="display: flex; gap: 10px; justify-content: space-around; padding: 12px 6px;">
-    <div style="flex: 1; border-right: 1px dashed #90CAF9; padding-right: 5px;">
-        <div style="font-size: 13px; font-weight: bold; color: #1565C0;">📚 期末总评</div>
-        <div style="margin: 4px 0;"><b id="modalLiveTotalScore" style="font-size: 22px;">--</b></div>
-        <span id="modalLiveTotalLevel" class="level-badge" style="display:inline-block;">--</span>
-        <div style="font-size: 10px; color: #777; margin-top: 4px;">(项目均分80% + 考勤20%)</div>
-    </div>
-    <div style="flex: 1; padding-left: 5px;">
-        <div style="font-size: 13px; font-weight: bold; color: #E65100;">🏃 体测健康总分</div>
-        <div style="margin: 4px 0;"><b id="modalLiveFitnessScore" style="font-size: 22px; color: #E65100;">--</b></div>
-        <span id="modalLiveFitnessLevel" class="level-badge" style="display:inline-block;">--</span>
-        <div style="font-size: 10px; color: #777; margin-top: 4px;">(国标加权算分)</div>
-    </div>
-</div>
+                    <div style="flex: 1; border-right: 1px dashed #90CAF9; padding-right: 5px;">
+                        <div style="font-size: 13px; font-weight: bold; color: #1565C0;">📚 期末总评</div>
+                        <div style="margin: 4px 0;"><b id="modalLiveTotalScore" style="font-size: 22px;">--</b></div>
+                        <span id="modalLiveTotalLevel" class="level-badge" style="display:inline-block;">--</span>
+                        <div style="font-size: 10px; color: #777; margin-top: 4px;">(项目均分80% + 考勤20%)</div>
+                    </div>
+                    <div style="flex: 1; padding-left: 5px;">
+                        <div style="font-size: 13px; font-weight: bold; color: #E65100;">🏃 体测健康总分</div>
+                        <div style="margin: 4px 0;"><b id="modalLiveFitnessScore" style="font-size: 22px; color: #E65100;">--</b></div>
+                        <span id="modalLiveFitnessLevel" class="level-badge" style="display:inline-block;">--</span>
+                        <div style="font-size: 10px; color: #777; margin-top: 4px;">(国标加权算分)</div>
+                    </div>
+                </div>
                 
-                <div id="modalScoreFieldsContainer" style="max-height:240px; overflow-y:auto; padding-right:5px; border-bottom:1px dashed #eee; margin-bottom:10px;">
+                <div id="modalScoreFieldsContainer" style="max-height:260px; overflow-y:auto; padding-right:5px; border-bottom:1px dashed #eee; margin-bottom:10px;">
                     ${fieldsHtml}
                 </div>
 
@@ -1704,8 +1749,7 @@ let defaultStandardsVisible = false;
             document.getElementById('calendarModal').style.display = 'flex';
             refreshModalTotalScore(className, gender);
 
-       } else if(currentModule === 'tx') {
-            // =========== 体训队 高级 PB 视图 ===========
+        } else if(currentModule === 'tx') {
             const historyKey = `${className}_${studentName}`;
             let thisMonthScores = (scoreHistory && scoreHistory[currentMonth] && scoreHistory[currentMonth][historyKey]) ? scoreHistory[currentMonth][historyKey] : {};
 
@@ -1751,7 +1795,6 @@ let defaultStandardsVisible = false;
                 `;
             });
 
-            // 🌟 专项行 (占比40分) - 下拉菜单改造
             let spName = thisMonthScores["专项名称"] || "";
             let spVal = thisMonthScores["专项成绩"] || "";
             let p4 = queryTxSpecialScore(spName, spVal, gender);
@@ -1876,7 +1919,7 @@ let defaultStandardsVisible = false;
             `;
             document.getElementById('calendarModal').style.display = 'flex';
         }
-}
+    }
     // 体育课专用的：动态添加自定义科目功能
     function addNewScoreFieldIntoModal(className, gender) {
         const input = document.getElementById('newProjNameInput');
@@ -1919,57 +1962,66 @@ let defaultStandardsVisible = false;
         if(previousBusinessModule === 'ty') refreshModalTotalScore(className, gender);
     }
 
-    function refreshModalTotalScore(className, gender) {
-    const fields = document.querySelectorAll('.student-score-field');
-    let tempScores = {};
-    let validProjectsSum = 0;
-    let validProjectsCount = 0; 
+  function refreshModalTotalScore(className, gender) {
+        const fields = document.querySelectorAll('.student-score-field');
+        let tempScores = {};
+        let validProjectsSum = 0;
+        let validProjectsCount = 0; 
 
-    fields.forEach(f => {
-        const proj = f.getAttribute('data-proj');
-        const val = f.value.trim();
-        tempScores[proj] = val;
-        const calculatedPoints = queryStandardScore(proj, val, className, gender);
-        if (calculatedPoints !== null) {
-            validProjectsSum += calculatedPoints;
-            validProjectsCount++;
+        fields.forEach(f => {
+            const proj = f.getAttribute('data-proj');
+            const val = f.value.trim();
+            tempScores[proj] = val;
+            const calculatedPoints = queryStandardScore(proj, val, className, gender);
+            if (calculatedPoints !== null) {
+                validProjectsSum += calculatedPoints;
+                validProjectsCount++;
+            }
+        });
+
+        // 1. 计算期末常规课总分
+        const studentName = document.querySelector('#modalCalendarBody b').innerText;
+        const classTotalDays = calculateAllStats();
+        const totalClasses = classTotalDays[className] || 0;
+        const s = cachedStats[className][studentName] || { leave: 0, absent: 0, late: 0, early: 0 };
+        const totalMissedScore = (s.absent * 1.0) + (s.leave * 0.5) + (s.late * 0.25) + (s.early * 0.25);
+        let effectiveAttendance = Math.max(0, totalClasses - totalMissedScore);
+        const attendanceFinalScore = Math.round((totalClasses > 0 ? effectiveAttendance / totalClasses : 1.0) * 100);
+
+        let sportsAverageScore = validProjectsCount > 0 ? (validProjectsSum / validProjectsCount) : 0;
+        let finalTotalScore = Math.round((sportsAverageScore * 0.8) + (attendanceFinalScore * 0.2));
+
+        document.getElementById('modalLiveTotalScore').innerText = `${finalTotalScore} 分`;
+        let lvlText = getLevelText(finalTotalScore);
+        let lvlElem = document.getElementById('modalLiveTotalLevel');
+        lvlElem.innerText = lvlText;
+        lvlElem.className = "level-badge " + getLevelClass(lvlText);
+
+        // 2. 补齐后台可能存在的未显性列出字段（如原始身高体重），合并计算体质健康测试总分
+        const studentObj = students[className].find(st => st.name === studentName);
+        if (studentObj && studentObj.scores) {
+            Object.keys(studentObj.scores).forEach(k => {
+                if (tempScores[k] === undefined) {
+                    tempScores[k] = studentObj.scores[k];
+                }
+            });
         }
-    });
 
-    // 1. 计算期末总分
-    const studentName = document.querySelector('#modalCalendarBody b').innerText;
-    const classTotalDays = calculateAllStats();
-    const totalClasses = classTotalDays[className] || 0;
-    const s = cachedStats[className][studentName] || { leave: 0, absent: 0, late: 0, early: 0 };
-    const totalMissedScore = (s.absent * 1.0) + (s.leave * 0.5) + (s.late * 0.25) + (s.early * 0.25);
-    let effectiveAttendance = Math.max(0, totalClasses - totalMissedScore);
-    const attendanceFinalScore = Math.round((totalClasses > 0 ? effectiveAttendance / totalClasses : 1.0) * 100);
+        const fitness = calculateFitnessTotalScore(tempScores, className, gender);
+        document.getElementById('modalLiveFitnessScore').innerText = `${fitness.score} 分`;
+        let fitElem = document.getElementById('modalLiveFitnessLevel');
+        fitElem.innerText = fitness.level;
+        fitElem.className = "level-badge " + getLevelClass(fitness.level);
+    }
 
-    let sportsAverageScore = validProjectsCount > 0 ? (validProjectsSum / validProjectsCount) : 0;
-    let finalTotalScore = Math.round((sportsAverageScore * 0.8) + (attendanceFinalScore * 0.2));
-
-    document.getElementById('modalLiveTotalScore').innerText = `${finalTotalScore} 分`;
-    let lvlText = getLevelText(finalTotalScore);
-    let lvlElem = document.getElementById('modalLiveTotalLevel');
-    lvlElem.innerText = lvlText;
-    lvlElem.className = "level-badge " + getLevelClass(lvlText);
-
-    // 2. 计算体质健康测试总分
-    const fitness = calculateFitnessTotalScore(tempScores, className, gender);
-    document.getElementById('modalLiveFitnessScore').innerText = `${fitness.score} 分`;
-    let fitElem = document.getElementById('modalLiveFitnessLevel');
-    fitElem.innerText = fitness.level;
-    fitElem.className = "level-badge " + getLevelClass(fitness.level);
-}
-
-   function saveStudentSingleScores(className, studentName) {
+  function saveStudentSingleScores(className, studentName) {
         if(currentModule === 'ty') {
-            // (原有体育课保存逻辑保持不变)
             const studentObj = students[className].find(s => s.name === studentName);
             if(!studentObj) return;
 
             if(!studentObj.scores) studentObj.scores = {};
             
+            // 🌟 保护性保存：只针对当前弹窗中出现的输入框进行增量改写或清空
             const fields = document.querySelectorAll('.student-score-field');
             fields.forEach(f => {
                 const proj = f.getAttribute('data-proj');
@@ -1981,9 +2033,10 @@ let defaultStandardsVisible = false;
                 }
             });
 
+            // 隐藏项目（身高、体重、BMI、肺活量）不会被清空，完好保留在 studentObj.scores 中
             saveModuleData();
             document.getElementById('calendarModal').style.display = 'none';
-            showToast(`已成功同步 ${studentName} 的个人期末成绩`);
+            showToast(`已成功同步 ${studentName} 的个人成绩`);
             renderAccordion(); 
         } else if (currentModule === 'tx') {
             const currentMonth = typeof getYearMonthKey === 'function' ? getYearMonthKey(document.getElementById('datePicker').value) : document.getElementById('datePicker').value.substring(0,7);
@@ -2000,7 +2053,7 @@ let defaultStandardsVisible = false;
                 else scoreHistory[currentMonth][historyKey][proj] = val;
             });
 
-           let spSelectField = document.getElementById('modal-tx-sp-select');
+            let spSelectField = document.getElementById('modal-tx-sp-select');
             if (spSelectField) {
                 let spSelect = spSelectField.value;
                 let spName = spSelect === "自定义" ? document.getElementById('modal-tx-sp-name').value.trim() : spSelect;
@@ -2116,7 +2169,7 @@ let defaultStandardsVisible = false;
 
     function scrollCalendarContainer(dir) { const s = document.getElementById('calendarSlider'); if (s) s.scrollBy({ left: dir * s.clientWidth, behavior: 'smooth' }); }
 
-    function exportStatsToExcel() {
+   function exportStatsToExcel() {
         const classNames = Object.keys(students);
         if (classNames.length === 0) { alert('暂无可用数据'); return; }
         const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
@@ -2124,29 +2177,49 @@ let defaultStandardsVisible = false;
         const classTotalDays = calculateAllStats();
 
         if (currentModule === 'ty') {
-            let activeProjectsList = ["50米", "立定跳远", "坐位体前屈"];
-            ["身高", "体重", "体重指数(BMI)", "肺活量"].forEach(p => {
-                let hasData = Object.values(students).some(cl => cl.some(st => st.scores && st.scores[p]));
-                if (hasData && !activeProjectsList.includes(p)) activeProjectsList.unshift(p);
+            // 1. 动态检索只包含实际录入成绩的平时项目（排除纯体测的形态机能项目）
+            let detectedProjects = new Set();
+            classNames.forEach(className => {
+                students[className].forEach(studentObj => {
+                    const sScores = studentObj.scores || {};
+                    Object.keys(sScores).forEach(proj => {
+                        let upper = proj.toUpperCase();
+                        // 过滤掉身高、体重、BMI，期末成绩册主要统计常规技能科目
+                        if (upper === "身高" || upper === "体重" || upper.includes("BMI") || upper.includes("体重指数")) return;
+                        if (sScores[proj] !== undefined && sScores[proj] !== null && String(sScores[proj]).trim() !== '') {
+                            detectedProjects.add(proj);
+                        }
+                    });
+                });
             });
 
-            Object.keys(currentTYStandards).forEach(p => {
-                if(!activeProjectsList.includes(p) && p!=='run50' && p!=='jump' && p!=='sit' && p!=='str' && p!=='runL' && p!=='bmi' && p!=='lung' && p!=='weights') {
+            const priorityOrder = ["50米", "立定跳远", "坐位体前屈", "引体向上", "仰卧起坐", "1000米", "800米", "肺活量"];
+            let activeProjectsList = [];
+            priorityOrder.forEach(p => {
+                if (detectedProjects.has(p)) {
                     activeProjectsList.push(p);
+                    detectedProjects.delete(p);
                 }
             });
+            detectedProjects.forEach(p => activeProjectsList.push(p));
 
+            // 2. 双行表头：去掉体测评分和等级
             let row1 = ["序号", "班级", "姓名", "性别"];
             let row2 = ["", "", "", ""];
-            activeProjectsList.forEach(proj => { row1.push(proj, ""); row2.push("成绩", "得分"); });
-            row1.push("考勤分", "期末总分", "期末等级", "体测健康总分", "体测等级");
-            row2.push("", "", "", "", "");
+            activeProjectsList.forEach(proj => {
+                row1.push(proj, "");
+                row2.push("成绩", "得分");
+            });
+            row1.push("考勤分", "期末总分", "等级");
+            row2.push("", "", "");
             let dataRows = [row1, row2];
 
+            // 3. 逐行填充
             classNames.forEach(className => {
                 const totalClasses = classTotalDays[className] || 0;
-                // 🌟 导出时写入升级后的班级名
-                const displayClassName = getEffectiveClassName(className, currentDate);
+                const displayClassName = typeof getEffectiveClassName === 'function' 
+                    ? getEffectiveClassName(className, currentDate) 
+                    : className;
 
                 students[className].forEach((studentObj, index) => {
                     const sName = studentObj.name;
@@ -2158,23 +2231,27 @@ let defaultStandardsVisible = false;
 
                     activeProjectsList.forEach(proj => {
                         const rawValue = sScores[proj];
-                        const calculatedPoints = queryStandardScore(proj, rawValue, className, sGender);
-                        if (calculatedPoints !== null) { rowCells.push(rawValue, calculatedPoints); validProjectsSum += calculatedPoints; } 
-                        else { rowCells.push("-", 0); }
+                        if (rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '') {
+                            const calculatedPoints = queryStandardScore(proj, rawValue, className, sGender);
+                            let pts = calculatedPoints !== null ? calculatedPoints : 0;
+                            rowCells.push(rawValue, pts);
+                            validProjectsSum += pts;
+                        } else {
+                            rowCells.push("-", "-");
+                        }
                         validProjectsCount++;
                     });
 
                     const s = cachedStats[className][sName] || { leave: 0, absent: 0, late: 0, early: 0 };
                     const totalMissedScore = (s.absent * 1.0) + (s.leave * 0.5) + (s.late * 0.25) + (s.early * 0.25);
-                    let effectiveAttendance = totalClasses - totalMissedScore;
-                    if (effectiveAttendance < 0) effectiveAttendance = 0;
+                    let effectiveAttendance = Math.max(0, totalClasses - totalMissedScore);
                     const attendanceRateNum = totalClasses > 0 ? (effectiveAttendance / totalClasses) : 1.0;
                     const attendanceFinalScore = Math.round(attendanceRateNum * 100);
+                    
                     let sportsAverageScore = validProjectsCount > 0 ? (validProjectsSum / validProjectsCount) : 0;
                     let finalTotalScore = Math.round((sportsAverageScore * 0.8) + (attendanceFinalScore * 0.2));
 
-                    const fitnessResult = calculateFitnessTotalScore(sScores, className, sGender);
-                    rowCells.push(attendanceFinalScore, finalTotalScore, getLevelText(finalTotalScore), fitnessResult.score, fitnessResult.level);
+                    rowCells.push(attendanceFinalScore, finalTotalScore, getLevelText(finalTotalScore));
                     dataRows.push(rowCells);
                 });
             });
@@ -2183,15 +2260,17 @@ let defaultStandardsVisible = false;
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "期末体育成绩册");
             XLSX.writeFile(wb, `体育期末成绩册_${activeSem}_${new Date().toISOString().slice(0, 10)}.xlsx`);
-       } else if (currentModule === 'tx') {
+        } else if (currentModule === 'tx') {
             let sortedMonths = scoreHistory ? Object.keys(scoreHistory).sort() : [];
             let row1 = ["序号", "队伍班级", "姓名", "组别", "累计总出勤率"];
-            sortedMonths.forEach(m => { row1.push(`${m} 100米`, `${m} 三级跳远`, `${m} 铅球`, `${m} 专项名称`, `${m} 专项成绩`, `${m} 专项得分`, `${m} 满分100总分`, `${m} 达标评估`); });
+            sortedMonths.forEach(m => { 
+                row1.push(`${m} 100米`, `${m} 三级跳远`, `${m} 铅球`, `${m} 专项名称`, `${m} 专项成绩`, `${m} 专项得分`, `${m} 满分100总分`, `${m} 达标评估`); 
+            });
             let dataRows = [row1];
 
             classNames.forEach(className => {
                 const totalClasses = classTotalDays[className] || 0;
-                const displayClassName = getEffectiveClassName(className, currentDate);
+                const displayClassName = typeof getEffectiveClassName === 'function' ? getEffectiveClassName(className, currentDate) : className;
 
                 students[className].forEach((studentObj, index) => {
                     const sName = studentObj.name;
@@ -2200,8 +2279,7 @@ let defaultStandardsVisible = false;
 
                     const s = cachedStats[className][sName] || { leave: 0, absent: 0, late: 0, early: 0 };
                     const totalMissed = (s.absent * 1.0) + (s.leave * 0.5) + (s.late * 0.25) + (s.early * 0.25);
-                    let effectiveAttendance = totalClasses - totalMissed;
-                    if (effectiveAttendance < 0) effectiveAttendance = 0;
+                    let effectiveAttendance = Math.max(0, totalClasses - totalMissed);
                     const attendanceRate = totalClasses > 0 ? ((effectiveAttendance / totalClasses) * 100).toFixed(0) + "%" : "100%";
 
                     let rowCells = [index + 1, displayClassName, sName, sGender, attendanceRate];
@@ -2239,15 +2317,14 @@ let defaultStandardsVisible = false;
 
             classNames.forEach(className => {
                 const totalClasses = classTotalDays[className] || 0;
-                const displayClassName = getEffectiveClassName(className, currentDate);
+                const displayClassName = typeof getEffectiveClassName === 'function' ? getEffectiveClassName(className, currentDate) : className;
 
                 students[className].forEach((studentObj, index) => {
                     const sName = studentObj.name;
                     const sGender = studentObj.gender;
                     const s = cachedStats[className][sName] || { leave: 0, absent: 0, late: 0, early: 0 };
                     const totalMissed = (s.absent * 1.0) + (s.leave * 0.5) + (s.late * 0.25) + (s.early * 0.25);
-                    let effectiveAttendance = totalClasses - totalMissed;
-                    if (effectiveAttendance < 0) effectiveAttendance = 0;
+                    let effectiveAttendance = Math.max(0, totalClasses - totalMissed);
                     const attendanceRate = totalClasses > 0 ? ((effectiveAttendance / totalClasses) * 100).toFixed(0) + "%" : "100%";
 
                     dataRows.push([
@@ -2262,7 +2339,145 @@ let defaultStandardsVisible = false;
             XLSX.writeFile(wb, `代表队考勤汇总表_${activeSem}_${new Date().toISOString().slice(0, 10)}.xlsx`);
         }
     }
+// 🌟 核心新增：专门导出国家体质健康测试规范大表
+    function exportFitnessReportToExcel() {
+        const classNames = Object.keys(students);
+        if (classNames.length === 0) { alert('暂无可用数据'); return; }
+        const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
+        const currentDate = document.getElementById('datePicker').value;
 
+        // 严格指定的测试项目输出顺序
+        const orderedProjects = [
+            "身高", "体重", "肺活量", "50米跑", "坐位体前屈", 
+            "仰卧起坐", "立定跳远", "引体向上", "1000米", "800米"
+        ];
+
+        // 构建双行表头
+        let row1 = ["序号", "班级", "姓名", "性别"];
+        let row2 = ["", "", "", ""];
+
+        orderedProjects.forEach(p => {
+            if (p === "身高" || p === "体重") {
+                // 身高和体重作为基础形态指标，单独占用单列展示数值，不单设得分列
+                row1.push(p);
+                row2.push(p === "身高" ? "厘米(cm)" : "公斤(kg)");
+            } else {
+                row1.push(p, "");
+                row2.push("成绩", "得分");
+            }
+        });
+
+        // 附带 BMI 评价及体测最终加权总分、等级
+        row1.push("BMI数值", "BMI得分", "体测健康总分", "体测等级");
+        row2.push("", "", "(国标权重换算)", "");
+
+        let dataRows = [row1, row2];
+
+        // 模糊取值工具：匹配各类可能存在的项目别名
+        const getScoreVal = (scores, keywords) => {
+            if (!scores) return "";
+            for (let k in scores) {
+                let cleanK = k.replace(/\s+/g, "");
+                if (keywords.some(kw => cleanK.includes(kw))) {
+                    let v = scores[k];
+                    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+                }
+            }
+            return "";
+        };
+
+        classNames.forEach(className => {
+            const displayClassName = typeof getEffectiveClassName === 'function' 
+                ? getEffectiveClassName(className, currentDate) 
+                : className;
+
+            students[className].forEach((studentObj, index) => {
+                const sName = studentObj.name;
+                const sGender = studentObj.gender;
+                const sScores = studentObj.scores || {};
+                let rowCells = [index + 1, displayClassName, sName, sGender];
+
+                // 1. 身高 (cm)
+                let valHeight = sScores["身高"] || "";
+                rowCells.push(valHeight ? valHeight : "-");
+
+                // 2. 体重 (kg)
+                let valWeight = sScores["体重"] || "";
+                rowCells.push(valWeight ? valWeight : "-");
+
+                // 3. 肺活量
+                let valLung = getScoreVal(sScores, ["肺活量"]);
+                let scoreLung = valLung ? (queryStandardScore("肺活量", valLung, className, sGender) || 0) : "-";
+                rowCells.push(valLung || "-", scoreLung);
+
+                // 4. 50米跑
+                let val50 = getScoreVal(sScores, ["50米", "50"]);
+                let score50 = val50 ? (queryStandardScore("50米", val50, className, sGender) || 0) : "-";
+                rowCells.push(val50 || "-", score50);
+
+                // 5. 坐位体前屈
+                let valSit = getScoreVal(sScores, ["体前屈"]);
+                let scoreSit = valSit ? (queryStandardScore("坐位体前屈", valSit, className, sGender) || 0) : "-";
+                rowCells.push(valSit || "-", scoreSit);
+
+                // 6. 仰卧起坐 (女测项目，男生若未测输出 "/")
+                let valSitUp = getScoreVal(sScores, ["仰卧"]);
+                if (sGender === '男' && !valSitUp) {
+                    rowCells.push("/", "/");
+                } else {
+                    let scoreSitUp = valSitUp ? (queryStandardScore("仰卧起坐", valSitUp, className, sGender) || 0) : "-";
+                    rowCells.push(valSitUp || "-", scoreSitUp);
+                }
+
+                // 7. 立定跳远
+                let valJump = getScoreVal(sScores, ["立定跳远", "跳远"]);
+                let scoreJump = valJump ? (queryStandardScore("立定跳远", valJump, className, sGender) || 0) : "-";
+                rowCells.push(valJump || "-", scoreJump);
+
+                // 8. 引体向上 (男测项目，女生若未测输出 "/")
+                let valPullUp = getScoreVal(sScores, ["引体"]);
+                if (sGender === '女' && !valPullUp) {
+                    rowCells.push("/", "/");
+                } else {
+                    let scorePullUp = valPullUp ? (queryStandardScore("引体向上", valPullUp, className, sGender) || 0) : "-";
+                    rowCells.push(valPullUp || "-", scorePullUp);
+                }
+
+                // 9. 1000米 (男测项目，女生输出 "/")
+                let val1000 = getScoreVal(sScores, ["1000米", "1000"]);
+                if (sGender === '女' && !val1000) {
+                    rowCells.push("/", "/");
+                } else {
+                    let score1000 = val1000 ? (queryStandardScore("1000米", val1000, className, sGender) || 0) : "-";
+                    rowCells.push(val1000 || "-", score1000);
+                }
+
+                // 10. 800米 (女测项目，男生输出 "/")
+                let val800 = getScoreVal(sScores, ["800米", "800"]);
+                if (sGender === '男' && !val800) {
+                    rowCells.push("/", "/");
+                } else {
+                    let score800 = val800 ? (queryStandardScore("800米", val800, className, sGender) || 0) : "-";
+                    rowCells.push(val800 || "-", score800);
+                }
+
+                // 11. BMI 评价及国标总分结算
+                let valBMI = sScores["体重指数(BMI)"] || sScores["BMI"] || "";
+                let scoreBMI = valBMI ? (queryStandardScore("体重指数(BMI)", valBMI, className, sGender) || 0) : "-";
+                rowCells.push(valBMI || "-", scoreBMI);
+
+                const fitnessResult = calculateFitnessTotalScore(sScores, className, sGender);
+                rowCells.push(fitnessResult.score, fitnessResult.level);
+
+                dataRows.push(rowCells);
+            });
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(dataRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "学生体质健康测试总表");
+        XLSX.writeFile(wb, `体质健康测试汇总表_${activeSem}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
    function exportCurrentMonthExcel() {
         if(currentModule !== 'tx') return;
         const classNames = Object.keys(students);
@@ -2504,6 +2719,31 @@ function getEffectiveClassName(className, targetDateStr) {
         localStorage.setItem(`base_year_${className}`, baseYear);
     }
     return getUpgradedClassName(className, parseInt(baseYear, 10), targetDateStr);
+}
+function clearAllScoresOnly() {
+    const modNames = { ty: '体育课', tx: '体训队', db: '代表队' };
+    const curName = modNames[currentModule] || '';
+    if (!confirm(`⚠️ 危险操作确认：\n仅清空当前【${curName}】所有学生的项目测试成绩？\n（学生的班级、姓名、考勤与打卡记录均会完好保留）`)) {
+        return;
+    }
+
+    if (currentModule === 'ty') {
+        Object.keys(students).forEach(cls => {
+            students[cls].forEach(s => {
+                s.scores = {};
+            });
+        });
+        saveModuleData();
+        showToast('已清空体育课全部项目成绩');
+    } else if (currentModule === 'tx') {
+        scoreHistory = {};
+        saveModuleData();
+        showToast('已清空体训队历史测试成绩');
+    } else {
+        showToast('代表队无成绩数据需要清空');
+    }
+
+    renderAccordion();
 }
 </script>
 </body>
