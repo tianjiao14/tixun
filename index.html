@@ -1331,12 +1331,10 @@ let defaultStandardsVisible = false;
 
                     if (!cls || !name) return;
 
-                    if (!localStorage.getItem(`base_year_${cls}`)) {
-                        let offset = 0;
-                        if (cls.includes("高二") || cls.includes("初二")) offset = 1;
-                        if (cls.includes("高三") || cls.includes("初三")) offset = 2;
-                        localStorage.setItem(`base_year_${cls}`, curSchoolYear - offset);
-                    }
+                    // 🌟 修正：直接以导入当天的学年作为该班级的创建基准学年（不再人工倒减年份导致二次升级）
+if (!localStorage.getItem(`base_year_${cls}`)) {
+    localStorage.setItem(`base_year_${cls}`, curSchoolYear);
+}
 
                     if (!students[cls]) students[cls] = [];
 
@@ -2681,24 +2679,24 @@ function getSchoolYear(dateStr) {
     return month >= 9 ? year : year - 1;
 }
 
-// 班级年级自动升段核心算法
+// 班级年级自动升段核心算法（修复重复累加问题）
 function getUpgradedClassName(baseClassName, baseYear, targetDateStr) {
     if (!baseClassName) return "";
     const currentSchoolYear = getSchoolYear(targetDateStr || document.getElementById('datePicker').value);
     const yearDiff = currentSchoolYear - baseYear;
 
+    // 当年导入的当年显示原名；只有未来学年 (yearDiff > 0) 才往上升级
     if (yearDiff <= 0) return baseClassName;
 
     const chnNumMap = { "一": 1, "二": 2, "三": 3, "四": 4, "1": 1, "2": 2, "3": 3, "4": 4 };
     const numToChn = { 1: "一", 2: "二", 3: "三" };
 
-    // 匹配 "高一"、"高二"、"初一"、"初二" 等前缀
     const match = baseClassName.match(/^(初|高)([一二三123])(.*)$/);
-    if (!match) return baseClassName; // 无法识别年级的名称保持原样
+    if (!match) return baseClassName;
 
-    const section = match[1];      // '初' 或 '高'
-    const currGradeNum = chnNumMap[match[2]]; // 1, 2, 3
-    const restName = match[3];     // '1'、'班' 等后缀
+    const section = match[1];
+    const currGradeNum = chnNumMap[match[2]];
+    const restName = match[3];
     const newGradeNum = currGradeNum + yearDiff;
 
     if (newGradeNum <= 3) {
