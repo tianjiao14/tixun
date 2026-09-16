@@ -90,14 +90,14 @@
         }
         .file-input-wrapper input[type="file"] { display: none; }
         
-        input[type="text"], input[type="date"], input[type="number"], select {
-            padding: 8px;
-            margin-top: 5px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
+        input[type="text"], input[type="password"], input[type="date"], input[type="number"], select {
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+    font-size: 14px;
+}
         button {
             background-color: #4CAF50;
             color: white;
@@ -289,13 +289,120 @@
         .legend-box { width: 13px; height: 13px; border-radius: 3px; }
         .btn-del-student { cursor: pointer; margin-left: auto; padding: 0 5px; color: #aaa; font-size: 13px; }
         .btn-del-student:hover { color: #f44336; }
+       /* 50米单手便携秒表悬浮窗 */
+/* 50米可拖拽便携双道秒表面板 */
+.stopwatch-float-panel {
+    position: fixed;
+    z-index: 12000;
+    background: rgba(30, 30, 30, 0.96);
+    backdrop-filter: blur(10px);
+    border: 2px solid #FF9800;
+    border-radius: 14px;
+    padding: 8px 8px 10px 8px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    width: 125px;
+    user-select: none;
+    touch-action: none; /* 禁止原生滚动，专供精准触控拖动 */
+}
+.sw-drag-handle {
+    cursor: move;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0 4px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.2);
+    margin-bottom: 2px;
+}
+.sw-timer-display {
+    font-family: ui-monospace, SFMono-Regular, "Courier New", monospace;
+    color: #00E676;
+    background: #000;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 800;
+    padding: 5px 2px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+}
+.sw-btn {
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 800;
+    padding: 10px 0;
+    font-size: 14px;
+    margin: 0;
+    width: 100%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.sw-btn:active { transform: scale(0.96); opacity: 0.9; }
+.sw-btn-start { background: #00C853; }
+.sw-btn-stop { background: #D50000; }
+.sw-btn-lane1 { background: #2979FF; }
+.sw-btn-lane2 { background: #FF9100; color: #111; }
+.sw-lane-tag {
+    display: block;
+    font-size: 11px;
+    opacity: 0.9;
+    font-weight: normal;
+}
+/* 待录入高亮提示 */
+.awaiting-target-name {
+    background-color: #FFF9C4 !important;
+    outline: 2px dashed #FF9800;
+}
     </style>
 </head>
 <body>
+<!-- 顶部状态栏：当前登录身份与切换 -->
+<div id="userStatusBar" style="max-width: 600px; margin: 0 auto 10px auto; display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 8px 15px; border-radius: 8px; font-size: 13px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+    <div>当前登录: <b id="currentUserDisplay" style="color: #2196F3;">管理员</b> (<span id="currentUserRole">管理员</span>)</div>
+    <div style="display:flex; gap:6px;">
+        <button id="adminManageBtn" onclick="openTeacherAdminModal()" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#673AB7;">⚙️ 教师班级分配</button>
+        <!-- 🌟 改为退出账号按钮 -->
+        <button onclick="handleLogout()" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#e53935;">退出账号</button>
+    </div>
+</div>
+<!-- 登录弹窗 -->
+<div class="modal-overlay" id="loginModal" style="z-index: 20000;">
+    <div class="modal-content" style="max-width: 320px; text-align: center;">
+        <h3 style="margin-top:0;">🔐 身份与账号登录</h3>
+        <p style="font-size: 12px; color: #666; margin-bottom: 12px;"></p>
+        <input type="text" id="loginUsername" placeholder="账号 / 教师姓名" style="width: 100%; margin-bottom: 12px;">
+        <input type="password" id="loginPassword" placeholder="密码" style="width: 100%; margin-bottom: 12px;">
+        <button onclick="handleLoginSubmit()" style="background-color: #2196F3; font-weight: bold; margin:0;">立即登录</button>
+    </div>
+</div>
 
+<!-- 管理员后台：教师与班级分配弹窗 -->
+<div class="modal-overlay" id="teacherAdminModal" style="z-index: 15000;" onclick="if(event.target.id==='teacherAdminModal') this.style.display='none'">
+    <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
+        <span class="close-modal" onclick="document.getElementById('teacherAdminModal').style.display='none'">&times;</span>
+        <h3 style="text-align: center; margin-top: 0;">👥 教师班级分配后台</h3>
+        
+        <div style="background: #f1f8e9; border: 1px dashed #8bc34a; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
+            <h4 style="margin: 0 0 6px 0; font-size: 13px; color: #33691e;">➕ 添加/更新教师账号</h4>
+            <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+                <input type="text" id="newTeacherName" placeholder="教师姓名/账号" style="flex:1; margin:0; padding:6px; font-size:12px;">
+                <input type="text" id="newTeacherPwd" placeholder="登录密码" style="flex:1; margin:0; padding:6px; font-size:12px;" value="123456">
+            </div>
+            <div style="font-size: 11px; color: #555; margin-bottom: 4px;">选择负责班级（可多选）:</div>
+            <div id="adminClassCheckboxList" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 100px; overflow-y: auto; background: #fff; padding: 6px; border: 1px solid #ddd; border-radius: 4px;"></div>
+            <button onclick="saveTeacherAccount()" style="background: #558b2f; padding: 6px; font-size: 13px; margin-top: 6px;">💾 保存该教师配置</button>
+        </div>
+
+        <h4 style="margin: 10px 0 6px 0; font-size: 13px;">📋 已分配教师列表</h4>
+        <div id="teacherAccountListContainer" style="max-height: 200px; overflow-y: auto;"></div>
+    </div>
+</div>
 <div class="container">
     <div class="system-nav" id="topNav">
         <div class="nav-tab active" id="tab-ty" onclick="switchModule('ty')">体育课</div>
+        <div class="nav-tab" id="tab-tc" onclick="switchModule('tc')">体测模式</div>
         <div class="nav-tab" id="tab-tx" onclick="switchModule('tx')">体训队</div>
         <div class="nav-tab" id="tab-db" onclick="switchModule('db')">代表队</div>
     </div>
@@ -604,7 +711,230 @@ function getYearMonthKey(dateStr) {
             return val > 40 ? 40.0 : val;
         }
     }
+// ================== 50米双跑道自动化秒表与全屏拖拽引擎 ==================
+let swTimer = null;
+let swStartTime = 0;
+let swRunning = false;
+let swLane1Time = null;
+let swLane2Time = null;
+let swAssignStep = 0; // 0:未在分配, 1:等待点选1道学生, 2:等待点选2道学生
 
+// 秒表自由拖动位置记录（默认在屏幕右下角）
+let swPanelPos = JSON.parse(localStorage.getItem('sw_panel_pos')) || { right: 12, bottom: 40 };
+
+function removeStopwatchPanel() {
+    if (swTimer) { clearInterval(swTimer); swTimer = null; }
+    swRunning = false;
+    swAssignStep = 0;
+    const old = document.getElementById('swFloatPanel');
+    if (old) old.remove();
+}
+
+function renderStopwatchFloatPanel() {
+    removeStopwatchPanel();
+    const panel = document.createElement('div');
+    panel.id = 'swFloatPanel';
+    panel.className = 'stopwatch-float-panel';
+    
+    // 还原历史停靠位置
+    if (swPanelPos.left !== undefined) {
+        panel.style.left = swPanelPos.left + 'px';
+        panel.style.top = swPanelPos.top + 'px';
+    } else {
+        panel.style.right = (swPanelPos.right || 12) + 'px';
+        panel.style.bottom = (swPanelPos.bottom || 40) + 'px';
+    }
+
+    panel.innerHTML = `
+        <div class="sw-drag-handle" id="swDragBar">
+            <span style="font-size:11px; color:#FFB74D; font-weight:bold;">⚡ 50m秒表</span>
+            <span style="font-size:10px; color:#bbb;">⠿ 拖动</span>
+        </div>
+        <div class="sw-timer-display" id="swTimeDisplay">0.00</div>
+        <button id="swMainControlBtn" class="sw-btn sw-btn-start" onclick="handleSwStartOrReset()">▶ 开始计时</button>
+        <button id="swLane1Btn" class="sw-btn sw-btn-lane1" onclick="handleSwLane1Click()">1道计取<span class="sw-lane-tag">未计时</span></button>
+        <button id="swLane2Btn" class="sw-btn sw-btn-lane2" onclick="handleSwLane2Click()">2道计取<span class="sw-lane-tag">未计时</span></button>
+    `;
+    document.body.appendChild(panel);
+    bindStopwatchDragEvents(panel);
+}
+
+// 触摸/鼠标拖拽停放逻辑
+function bindStopwatchDragEvents(panel) {
+    const handle = panel.querySelector('#swDragBar');
+    let isDragging = false;
+    let startX, startY, initLeft, initTop;
+
+    const onStart = (e) => {
+        isDragging = true;
+        const touch = e.touches ? e.touches[0] : e;
+        startX = touch.clientX;
+        startY = touch.clientY;
+        const rect = panel.getBoundingClientRect();
+        initLeft = rect.left;
+        initTop = rect.top;
+        // 清除 right/bottom 转换为 left/top 绝对定位
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        panel.style.left = initLeft + 'px';
+        panel.style.top = initTop + 'px';
+    };
+
+    const onMove = (e) => {
+        if (!isDragging) return;
+        const touch = e.touches ? e.touches[0] : e;
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        
+        let newX = initLeft + dx;
+        let newY = initTop + dy;
+        
+        // 限制在视窗内部停放
+        const maxW = window.innerWidth - panel.offsetWidth - 5;
+        const maxH = window.innerHeight - panel.offsetHeight - 5;
+        newX = Math.max(5, Math.min(newX, maxW));
+        newY = Math.max(5, Math.min(newY, maxH));
+
+        panel.style.left = newX + 'px';
+        panel.style.top = newY + 'px';
+    };
+
+    const onEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        // 记忆停放位置
+        swPanelPos = { left: parseInt(panel.style.left), top: parseInt(panel.style.top) };
+        localStorage.setItem('sw_panel_pos', JSON.stringify(swPanelPos));
+    };
+
+    handle.addEventListener('touchstart', onStart, { passive: false });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+
+    handle.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+}
+
+function formatStopwatchTime(ms) {
+    return (ms / 1000).toFixed(2);
+}
+
+function updateStopwatchTicker() {
+    const diff = performance.now() - swStartTime;
+    document.getElementById('swTimeDisplay').innerText = formatStopwatchTime(diff);
+}
+
+// 发令 / 归零
+function handleSwStartOrReset() {
+    const btn = document.getElementById('swMainControlBtn');
+    if (!swRunning) {
+        swRunning = true;
+        swLane1Time = null;
+        swLane2Time = null;
+        swAssignStep = 0;
+        document.getElementById('swLane1Btn').innerHTML = `1道计取<span class="sw-lane-tag">未计时</span>`;
+        document.getElementById('swLane2Btn').innerHTML = `2道计取<span class="sw-lane-tag">未计时</span>`;
+        clearPendingTargetHighlight();
+
+        btn.innerText = '⏹ 重置秒表';
+        btn.className = 'sw-btn sw-btn-stop';
+        swStartTime = performance.now();
+        swTimer = setInterval(updateStopwatchTicker, 30);
+    } else {
+        clearInterval(swTimer);
+        swTimer = null;
+        swRunning = false;
+        swAssignStep = 0;
+        btn.innerText = '▶ 开始计时';
+        btn.className = 'sw-btn sw-btn-start';
+        document.getElementById('swTimeDisplay').innerText = '0.00';
+        clearPendingTargetHighlight();
+    }
+}
+
+// 1道过线
+function handleSwLane1Click() {
+    if (!swRunning && !swLane1Time) {
+        showToast('⚠️ 请先点击【开始计时】');
+        return;
+    }
+    swLane1Time = document.getElementById('swTimeDisplay').innerText;
+    document.getElementById('swLane1Btn').innerHTML = `1道: <b>${swLane1Time}s</b><span class="sw-lane-tag">已捕获</span>`;
+    showToast(`⏱️ 1道成绩已捕获: ${swLane1Time}s`);
+}
+
+// 2道过线：自动停表并进入“连续分配”流程
+function handleSwLane2Click() {
+    if (!swRunning && !swLane2Time) {
+        showToast('⚠️ 请先点击【开始计时】');
+        return;
+    }
+    // 捕获2道时间
+    swLane2Time = document.getElementById('swTimeDisplay').innerText;
+    document.getElementById('swLane2Btn').innerHTML = `2道: <b>${swLane2Time}s</b><span class="sw-lane-tag">已捕获</span>`;
+
+    // 🌟 停止秒表计时
+    if (swRunning) {
+        clearInterval(swTimer);
+        swTimer = null;
+        swRunning = false;
+        const btn = document.getElementById('swMainControlBtn');
+        if (btn) {
+            btn.innerText = '▶ 开始计时';
+            btn.className = 'sw-btn sw-btn-start';
+        }
+    }
+
+    // 激活两道分配流程：先填1道，后填2道
+    swAssignStep = 1;
+    highlightTableForFill();
+    showToast(`🏁 比赛结束！请点【第1道选手姓名】填入 ${swLane1Time || swLane2Time}s`);
+}
+
+function highlightTableForFill() {
+    document.querySelectorAll('.tc-student-click-target').forEach(el => {
+        el.classList.add('awaiting-target-name');
+    });
+}
+
+function clearPendingTargetHighlight() {
+    document.querySelectorAll('.tc-student-click-target').forEach(el => {
+        el.classList.remove('awaiting-target-name');
+    });
+}
+
+// 点击学生名字的连续分配
+function handleTcNameClick(idx) {
+    const input = document.getElementById(`tc-row-${idx}`);
+    const cls = document.getElementById('tcClassSelect').value;
+    if (!input) return;
+
+    if (swAssignStep === 1) {
+        // 第一次点：填入1道成绩
+        const t1 = swLane1Time || document.getElementById('swTimeDisplay').innerText;
+        input.value = t1;
+        onTcBatchScoreInput(input, cls);
+        showToast(`✅ 1道【${input.getAttribute('data-name')}】：${t1}s ➔ 紧接着请点【第2道姓名】`);
+        
+        // 步进到第2道
+        swAssignStep = 2;
+    } else if (swAssignStep === 2) {
+        // 第二次点：填入2道成绩
+        const t2 = swLane2Time || document.getElementById('swTimeDisplay').innerText;
+        input.value = t2;
+        onTcBatchScoreInput(input, cls);
+        showToast(`🎉 2道【${input.getAttribute('data-name')}】：${t2}s 录入完毕！`);
+        
+        // 两道均分配完毕，复位高亮
+        swAssignStep = 0;
+        clearPendingTargetHighlight();
+    } else {
+        // 未处于计时连录模式，直接聚焦输入框方便手动改写
+        input.focus();
+        input.select();
+    }
+}
    function updateLiveTxTotal(gender) {
         let total = 0;
         ["100米", "立定三级跳远", "铅球"].forEach(proj => {
@@ -721,7 +1051,7 @@ function manualChangeSemester(targetSem) {
         if(typeof isConfigPageActive !== 'undefined' && isConfigPageActive) {
             isConfigPageActive = false;
             if(document.getElementById('toggleConfigPageBtn')) {
-                document.getElementById('toggleConfigPageBtn').innerText = "📊 进入/切换至 [评分标准控制台]";
+                document.getElementById('toggleConfigPageBtn').innerText = "📊评分标准设置";
                 document.getElementById('toggleConfigPageBtn').style.backgroundColor = "#607D8B";
             }
         }
@@ -730,7 +1060,8 @@ function manualChangeSemester(targetSem) {
         if(typeof previousBusinessModule !== 'undefined') previousBusinessModule = mod;
         
         document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-        document.getElementById(`tab-${mod}`).classList.add('active');
+        const targetTab = document.getElementById(`tab-${mod}`);
+        if (targetTab) targetTab.classList.add('active');
 
         document.getElementById('mainWorkspace').style.display = 'block';
         if(document.getElementById('standardsWorkspace')) document.getElementById('standardsWorkspace').style.display = 'none';
@@ -742,6 +1073,7 @@ function manualChangeSemester(targetSem) {
         const dateLabel = document.getElementById('dateLabel');
         const datePicker = document.getElementById('datePicker');
         const exportBlock = document.getElementById('exportBlock');
+        const accordionContainer = document.getElementById('accordionContainer');
         
         let dateTip = document.getElementById('dateTipObj');
         if(!dateTip) {
@@ -751,24 +1083,50 @@ function manualChangeSemester(targetSem) {
         }
         const activeSem = currentSemester || getSemesterKey(document.getElementById('datePicker').value);
         currentSemester = activeSem;
-       if(mod === 'ty') {
-            title.innerText = `📋 体育课考勤与成绩管理系统 (${activeSem})`;
+
+        // 🌟 共享/加载基础学生名册，确保体测模块能直接获取到已录入的班级与学生
+        loadModuleData();
+
+        if(mod === 'ty') {
+            title.innerText = `📋 体育课考勤与期末考核系统 (${activeSem})`;
+            fileWrapper.className = "file-input-wrapper";
             fileWrapper.style.cssText = "border: 2px dashed #4CAF50; background: #f1f8e9; color: #2E7D32;";
-            fileStatus.innerText = "🟢 导入/追加 Excel";
-            fileTip.innerText = "表格需包含【班级、姓名、性别】。可包含 50米、立定跳远、坐位体前屈、引体向上、1000米，仰卧起坐、800米。";
-            dateLabel.innerText = "📅 今日考勤";
+            fileStatus.innerText = "🟢 导入体育课名单/日常考核 Excel";
+            fileTip.innerText = "表格需包含【班级、姓名、性别】。可包含平时考核科目（如 50米、立定跳远、坐位体前屈等）。";
+            dateLabel.innerText = "📅 今日课堂考勤";
             datePicker.style.cssText = "width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #ccc; border-radius: 5px;";
             dateTip.style.display = 'none';
-            // 🌟 核心改动：双导出按钮并列
-            exportBlock.innerHTML = `
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="exportStatsToExcel()" style="background-color: #2E7D32; margin: 0; font-weight: bold; font-size: 14px; flex: 1;">🟢 导出【期末成绩册】</button>
-                    <button onclick="exportFitnessReportToExcel()" style="background-color: #E65100; margin: 0; font-weight: bold; font-size: 14px; flex: 1;">🏃 导出【体质健康测试表】</button>
+            exportBlock.innerHTML = `<button onclick="exportStatsToExcel()" style="background-color: #2E7D32; margin: 0; font-weight: bold; font-size: 15px;">🟢 导出【期末体育成绩册】</button>`;
+            renderAccordion();
+       } else if(mod === 'tc') {
+            title.innerText = `🏃 国家学生体质健康测试采集站 (${activeSem})`;
+            fileWrapper.className = "file-input-wrapper tx-theme";
+            fileWrapper.style.cssText = "border: 2px dashed #E65100; background: #FFF3E0; color: #BF360C;";
+            fileStatus.innerText = "🟠 导入体测名册/历史数据 Excel";
+            fileTip.innerText = "支持全量表头导入：班级、姓名、性别、身高、体重、肺活量、50米、跳远、体前屈、仰卧/引体、800/1000米。";
+            dateLabel.innerText = "📅 体测登记学期";
+            datePicker.style.cssText = "width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #E65100; border-radius: 5px;";
+            dateTip.style.display = 'none';
+
+            // 渲染选班级 ➔ 选单项连录界面
+            accordionContainer.innerHTML = `
+                <div style="background:#FFF3E0; border:1px solid #FFE0B2; border-radius:8px; padding:10px; margin-bottom:12px; box-sizing:border-box;">
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+                        <select id="tcClassSelect" style="flex:1 1 130px; min-width:0; max-width:100%; font-weight:bold; color:#E65100; border:1px solid #FFB74D; padding:8px 4px; border-radius:6px; font-size:14px; background:#fff;" onchange="renderTcProjectList()">
+                            <option value="">-- ① 选班级 --</option>
+                        </select>
+                        <select id="tcProjectSelect" style="flex:1 1 130px; min-width:0; max-width:100%; font-weight:bold; color:#E65100; border:1px solid #FFB74D; padding:8px 4px; border-radius:6px; font-size:14px; background:#fff;" onchange="renderTcBatchEntryTable()">
+                            <option value="">-- ② 选项目 --</option>
+                        </select>
+                    </div>
+                    <div id="tcBatchWorkspace" style="display:none;"></div>
                 </div>
             `;
-    
-        } else if(mod === 'tx') {
+            initTcClassOptions();
+            exportBlock.innerHTML = `<button onclick="exportFitnessReportToExcel()" class="tx-btn" style="background-color: #E65100; font-weight: bold; font-size: 15px;">📊 导出【国家体质健康测试总表】</button>`;
+        }else if(mod === 'tx') {
             title.innerText = `📋 体训生考勤与成绩管理系统 (${activeSem})`;
+            fileWrapper.className = "file-input-wrapper tx-theme";
             fileWrapper.style.cssText = "border: 2px dashed #2196F3; background: #E3F2FD; color: #0D47A1;";
             fileStatus.innerText = "🔵 导入名单/测试成绩 Excel";
             fileTip.innerText = "表格需包含(班级、姓名、性别)可导入(100米、立定三级跳远、铅球)成绩。";
@@ -783,8 +1141,10 @@ function manualChangeSemester(targetSem) {
                     <button onclick="exportStatsToExcel()" class="tx-btn" style="background-color: #2E7D32; margin: 0; font-weight: bold; font-size: 14px; flex:1;">🟢 导出成绩对比总表</button>
                 </div>
             `;
+            renderAccordion();
         } else if(mod === 'db') {
-           title.innerText = `📋 代表队集训考勤系统 (${activeSem})`;
+            title.innerText = `📋 代表队集训考勤系统 (${activeSem})`;
+            fileWrapper.className = "file-input-wrapper";
             fileWrapper.style.cssText = "border: 2px dashed #9C27B0; background: #F3E5F5; color: #4A148C;";
             fileStatus.innerText = "🔮 导入代表队花名册 Excel";
             fileTip.innerText = "表格需包含【班级、姓名、性别】。代表队仅保留日常考勤功能。";
@@ -794,19 +1154,24 @@ function manualChangeSemester(targetSem) {
             dateTip.style.cssText = "font-size: 11px; color:#666; margin: 4px 0 10px 0;";
             dateTip.innerHTML = "";
             exportBlock.innerHTML = `<button onclick="exportStatsToExcel()" style="background-color: #4A148C; margin: 0; font-weight: bold; font-size: 16px;">🔮 导出【代表队训练考勤表】 Excel</button>`;
+            renderAccordion();
         }
 
-        loadModuleData();
-        renderAccordion();
         refreshSemesterSelector();
     }
 
-    function loadModuleData() {
+   function loadModuleData() {
         const prefix = currentModule; 
         students = JSON.parse(localStorage.getItem(`${prefix}_students`)) || {};
+        
+        // 🌟 体验优化：如果切换到体测模式发现尚未导入体测名单，自动继承体育课名册
+        if (prefix === 'tc' && Object.keys(students).length === 0) {
+            students = JSON.parse(localStorage.getItem('ty_students')) || {};
+        }
+
         records = JSON.parse(localStorage.getItem(`${prefix}_records`)) || {};
         openedClassesState = JSON.parse(localStorage.getItem(`${prefix}_open_state`)) || {};
-        if (currentModule !== 'ty') {
+        if (currentModule === 'tx') {
             scoreHistory = JSON.parse(localStorage.getItem(`${prefix}_score_history`)) || {};
         }
         initializeSystemStandards();
@@ -817,7 +1182,7 @@ function manualChangeSemester(targetSem) {
         localStorage.setItem(`${prefix}_students`, JSON.stringify(students));
         localStorage.setItem(`${prefix}_records`, JSON.stringify(records));
         localStorage.setItem(`${prefix}_open_state`, JSON.stringify(openedClassesState));
-        if (currentModule !== 'ty') {
+        if (currentModule === 'tx') {
             localStorage.setItem(`${prefix}_score_history`, JSON.stringify(scoreHistory));
         }
     }
@@ -825,19 +1190,21 @@ function manualChangeSemester(targetSem) {
     window.onload = () => { 
         initializeSystemStandards();
         currentSemester = getSemesterKey(document.getElementById('datePicker').value || new Date().toISOString().slice(0, 10));
+        checkUserLoginState();
         switchModule('ty'); 
     };
 
- function queryStandardScore(projectName, rawValue, className, gender) {
+function queryStandardScore(projectName, rawValue, className, gender) {
     if (rawValue === undefined || rawValue === null || String(rawValue).trim() === '') return null;
-    let val = parseFloat(rawValue);
+    let strVal = String(rawValue).trim();
+    let val = parseFloat(strVal);
     if (isNaN(val)) return null;
 
     initializeSystemStandards();
 
-    if (previousBusinessModule === 'ty') {
-        // 🌟 自动获取升段后的真实年级进行查分
-        const effectiveCls = getEffectiveClassName(className);
+    // 🌟 关键修复：加入 currentModule === 'tc' 判定，确保体测模块能正确调用国标库
+    if (currentModule === 'ty' || currentModule === 'tc' || previousBusinessModule === 'ty' || previousBusinessModule === 'tc') {
+        const effectiveCls = typeof getEffectiveClassName === 'function' ? getEffectiveClassName(className) : (className || "");
         let gradeKey = "初一"; 
         ["初一","初二","初三","高一","高二","高三"].forEach(g => { if(effectiveCls.includes(g)) gradeKey = g; });
         const stdKey = `${gradeKey}${gender}`; 
@@ -849,13 +1216,15 @@ function manualChangeSemester(targetSem) {
         else if (projectName.includes("跳远")) targetProjectCode = "jump";
         else if (projectName.includes("体前屈")) targetProjectCode = "sit";
         else if (projectName.includes("仰卧起坐") || projectName.includes("引体向上")) targetProjectCode = "str";
-        else if (projectName.includes("1000米") || projectName.includes("800米") || projectName.includes("耐力跑")) {
+        else if (projectName.includes("1000米") || projectName.includes("800米") || projectName.includes("耐力跑") || projectName === "runL") {
             targetProjectCode = "runL";
-            if (String(rawValue).includes('.')) {
-                let parts = String(rawValue).split('.');
-                let mins = parseInt(parts[0], 10) || 0;
-                let secs = parseInt(parts[1], 10) || 0;
-                val = mins * 60 + secs;
+            // 🌟 智能时间格式解析：支持 3.45、3:45 转换为秒数
+            if (strVal.includes(':')) {
+                let parts = strVal.split(':');
+                val = (parseInt(parts[0], 10) || 0) * 60 + (parseFloat(parts[1]) || 0);
+            } else if (strVal.includes('.')) {
+                let parts = strVal.split('.');
+                val = (parseInt(parts[0], 10) || 0) * 60 + (parseFloat(parts[1]) || 0);
             }
         } else {
             targetProjectCode = projectName;
@@ -868,7 +1237,7 @@ function manualChangeSemester(targetSem) {
         }
 
         const ruleList = activePool[stdKey];
-        if (ruleList.length === 0) return 0;
+        if (!ruleList || ruleList.length === 0) return 0;
 
         if (targetProjectCode === "bmi") {
             if (Array.isArray(ruleList) && typeof ruleList[0] === 'number') {
@@ -887,6 +1256,7 @@ function manualChangeSemester(targetSem) {
         let isTimeType = targetProjectCode.includes("run") || targetProjectCode.includes("米") || targetProjectCode.includes("跑");
         
         if (isTimeType) {
+            // 越短越快越好
             if (val <= ruleList[0][0]) return ruleList[0][1];
             if (val > ruleList[ruleList.length - 1][0]) return 0;
             for (let i = 0; i < ruleList.length; i++) {
@@ -894,6 +1264,7 @@ function manualChangeSemester(targetSem) {
             }
             return 0;
         } else {
+            // 越大越长越好（立定跳远米转厘米适配）
             let actualVal = val;
             if (targetProjectCode === "jump" && val < 5) actualVal = Math.round(val * 100); 
             
@@ -905,6 +1276,7 @@ function manualChangeSemester(targetSem) {
             return 0;
         }
     } else {
+        // 体训生专项查分逻辑保持不变
         let targetProjectCode = "";
         let isTimeType = false;
         let txGender = gender === undefined ? className : gender; 
@@ -1280,13 +1652,7 @@ let defaultStandardsVisible = false;
     reader.onload = function(evt) {
         try {
             const data = evt.target.result;
-            let workbook;
-            
-            if (isCSV) {
-                workbook = XLSX.read(data, { type: 'string' });
-            } else {
-                workbook = XLSX.read(data, { type: 'binary' });
-            }
+            let workbook = isCSV ? XLSX.read(data, { type: 'string' }) : XLSX.read(data, { type: 'binary' });
             
             const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
             if (json.length === 0) { 
@@ -1311,7 +1677,6 @@ let defaultStandardsVisible = false;
                 return;
             }
 
-            // 🌟 1. 严格排除：班级、姓名、性别、序号/编号，避免“序号”被录入成项目成绩
             const projectKeys = firstRowKeys.filter(k => {
                 let ck = String(k).replace(/\s+/g, "");
                 if (k === classField || k === nameField || k === genderField || k === '__rowNum__') return false;
@@ -1323,7 +1688,7 @@ let defaultStandardsVisible = false;
             let updateScoreCount = 0;
             const curSchoolYear = getSchoolYear(document.getElementById('datePicker').value);
 
-            if (currentModule === 'ty') {
+            if (currentModule === 'ty' || currentModule === 'tc') {
                 json.forEach(row => {
                     const cls = row[classField] ? String(row[classField]).trim() : '';
                     const name = row[nameField] ? String(row[nameField]).trim() : '';
@@ -1331,10 +1696,20 @@ let defaultStandardsVisible = false;
 
                     if (!cls || !name) return;
 
-                    // 🌟 修正：直接以导入当天的学年作为该班级的创建基准学年（不再人工倒减年份导致二次升级）
-if (!localStorage.getItem(`base_year_${cls}`)) {
-    localStorage.setItem(`base_year_${cls}`, curSchoolYear);
-}
+                    if (currentUser && currentUser.role === 'teacher') {
+                        if (!currentUser.classes.includes(cls)) {
+                            currentUser.classes.push(cls);
+                            sessionStorage.setItem('sys_current_user', JSON.stringify(currentUser));
+                            if (teacherAccounts[currentUser.username]) {
+                                teacherAccounts[currentUser.username].classes = currentUser.classes;
+                                localStorage.setItem('sys_teacher_accounts', JSON.stringify(teacherAccounts));
+                            }
+                        }
+                    }
+
+                    if (!localStorage.getItem(`base_year_${cls}`)) {
+                        localStorage.setItem(`base_year_${cls}`, curSchoolYear);
+                    }
 
                     if (!students[cls]) students[cls] = [];
 
@@ -1344,52 +1719,56 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
                         students[cls].push(studentObj);
                         addStuCount++;
                     } else {
-                        // 确保老学生拥有 scores 字典
                         if (!studentObj.scores) studentObj.scores = {};
                     }
 
-                    // 🌟 2. 增量追加成绩：只更新在当前 Excel 中有值的科目，不覆盖旧科目
                     projectKeys.forEach(proj => {
                         let valStr = row[proj] !== undefined && row[proj] !== null ? String(row[proj]).trim() : '';
                         if (valStr !== '') {
+                            // 体育课模式下，不导入纯体测指标（身高、体重、BMI、肺活量）
+                            if (currentModule === 'ty') {
+                                let up = proj.toUpperCase();
+                                if (up.includes("身高") || up.includes("体重") || up.includes("BMI") || up.includes("肺活量")) return;
+                            }
                             studentObj.scores[proj] = valStr;
                             updateScoreCount++;
                         }
                     });
 
-                    // 🌟 3. 身高体重追加计算 BMI
-                    let rawHeight = null;
-                    let rawWeight = null;
-                    firstRowKeys.forEach(k => {
-                        let cleanK = String(k).replace(/\s+/g, "");
-                        let valStr = row[k] !== undefined && row[k] !== null ? String(row[k]).trim() : '';
-                        if (valStr !== '') {
-                            if (cleanK.includes("身高")) rawHeight = parseFloat(valStr);
-                            if (cleanK.includes("体重") && !cleanK.toUpperCase().includes("BMI") && !cleanK.includes("指数")) rawWeight = parseFloat(valStr);
-                        }
-                    });
+                    // 体测模式下自动解析并计算 BMI
+                    if (currentModule === 'tc') {
+                        let rawHeight = null;
+                        let rawWeight = null;
+                        firstRowKeys.forEach(k => {
+                            let cleanK = String(k).replace(/\s+/g, "");
+                            let valStr = row[k] !== undefined && row[k] !== null ? String(row[k]).trim() : '';
+                            if (valStr !== '') {
+                                if (cleanK.includes("身高")) rawHeight = parseFloat(valStr);
+                                if (cleanK.includes("体重") && !cleanK.toUpperCase().includes("BMI") && !cleanK.includes("指数")) rawWeight = parseFloat(valStr);
+                            }
+                        });
 
-                    if (rawHeight && rawWeight && !isNaN(rawHeight) && !isNaN(rawWeight)) {
-                        let heightInMeter = rawHeight > 3 ? (rawHeight / 100) : rawHeight;
-                        if (heightInMeter > 0) {
-                            let calculatedBMI = (rawWeight / (heightInMeter * heightInMeter)).toFixed(1);
-                            studentObj.scores["体重指数(BMI)"] = calculatedBMI;
-                            studentObj.scores["身高"] = String(rawHeight);
-                            studentObj.scores["体重"] = String(rawWeight);
-                            updateScoreCount++;
+                        if (rawHeight && rawWeight && !isNaN(rawHeight) && !isNaN(rawWeight)) {
+                            let heightInMeter = rawHeight > 3 ? (rawHeight / 100) : rawHeight;
+                            if (heightInMeter > 0) {
+                                let calculatedBMI = (rawWeight / (heightInMeter * heightInMeter)).toFixed(1);
+                                studentObj.scores["体重指数(BMI)"] = calculatedBMI;
+                                studentObj.scores["身高"] = String(rawHeight);
+                                studentObj.scores["体重"] = String(rawWeight);
+                                updateScoreCount++;
+                            }
                         }
+
+                        firstRowKeys.forEach(k => {
+                            let valStr = row[k] !== undefined && row[k] !== null ? String(row[k]).trim() : '';
+                            if (k.includes("肺活量") && valStr !== '') {
+                                studentObj.scores["肺活量"] = valStr;
+                            }
+                        });
                     }
-
-                    // 🌟 4. 肺活量追加
-                    firstRowKeys.forEach(k => {
-                        let valStr = row[k] !== undefined && row[k] !== null ? String(row[k]).trim() : '';
-                        if (k.includes("肺活量") && valStr !== '') {
-                            studentObj.scores["肺活量"] = valStr;
-                        }
-                    });
                 });
-                alert(`🎉 名册与成绩追加完成！\n新登记学生：${addStuCount} 人\n追加/更新成绩项：${updateScoreCount} 项次\n(原有成绩均完整保留)`);
-            } else if (currentModule === 'tx') {
+                alert(`🎉 名册与数据同步完成！\n新登记：${addStuCount} 人\n更新项：${updateScoreCount} 项次`);
+            }else if (currentModule === 'tx') {
                 if (!scoreHistory[currentMonth]) scoreHistory[currentMonth] = {};
 
                 json.forEach(row => {
@@ -1407,7 +1786,6 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
                     }
 
                     const historyKey = `${cls}_${name}`;
-                    
                     firstRowKeys.forEach(proj => {
                         let cleanedProj = String(proj).replace(/\s+/g, "");
                         let targetMatchCode = "";
@@ -1419,16 +1797,14 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
                         let valStr = row[proj] !== undefined && row[proj] !== null ? String(row[proj]).trim() : '';
                         if (targetMatchCode && valStr !== '') {
                             if (!scoreHistory[currentMonth][historyKey]) scoreHistory[currentMonth][historyKey] = {};
-                            
                             scoreHistory[currentMonth][historyKey][targetMatchCode] = valStr;
                             let aliasKey = (targetMatchCode === "100米") ? "m100" : ((targetMatchCode === "立定三级跳远") ? "jump" : "shot");
                             scoreHistory[currentMonth][historyKey][aliasKey] = valStr;
-                            
                             updateScoreCount++;
                         }
                     });
                 });
-                alert(`🎉 名册归档完毕！\n新导入/同步队员：${addStuCount} 人\n成功追加锁定 ${currentMonth} 测试流水：${updateScoreCount} 项次`);
+                alert(`🎉 体训队名册与成绩归档完成！\n同步队员：${addStuCount} 人\n成绩流水：${updateScoreCount} 项次`);
             } else if (currentModule === 'db') {
                 json.forEach(row => {
                     const cls = row[classField] ? String(row[classField]).trim() : '';
@@ -1444,7 +1820,7 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
                         addStuCount++;
                     }
                 });
-                alert(`🎉 代表队名册导入成功！\n新追加代表队成员：${addStuCount} 人`);
+                alert(`🎉 代表队名册导入成功！\n追加代表队成员：${addStuCount} 人`);
             }
 
             saveModuleData();
@@ -1492,10 +1868,15 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
         const currentDate = document.getElementById('datePicker').value;
         const currentMonth = typeof getYearMonthKey === 'function' ? getYearMonthKey(currentDate) : currentDate.substring(0,7);
         const dateRecord = records[currentDate] || {};
-        const classNames = Object.keys(students);
+        
+        // 🌟 核心增补：权限过滤，普通教师仅过滤出分配给自己的班级
+        let classNames = Object.keys(students);
+        if (currentUser.role === 'teacher') {
+            classNames = classNames.filter(c => (currentUser.classes || []).includes(c));
+        }
 
         if (classNames.length === 0) {
-            container.innerHTML = `<p style="color:#999; text-align:center; font-size:14px; padding:10px;">暂无名册数据，请点击上方导入名单或切换标签。</p>`;
+            container.innerHTML = `<p style="color:#999; text-align:center; font-size:14px; padding:10px;">${currentUser.role==='teacher' ? '您当前名下暂无分配负责的班级，您可以点击上方导入自己的班级Excel。' : '暂无名册数据，请点击上方导入名单或切换标签。'}</p>`;
             return;
         }
 
@@ -1512,7 +1893,6 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
             const header = document.createElement('div');
             header.className = 'class-header';
             
-            // 🌟 核心：显示当前日期下计算出的升学年级
             const displayClassName = getEffectiveClassName(className, currentDate);
 
             if(currentModule === 'ty') {
@@ -1663,49 +2043,29 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
         const currentDate = document.getElementById('datePicker').value;
         const currentMonth = typeof getYearMonthKey === 'function' ? getYearMonthKey(currentDate) : currentDate.substring(0,7);
 
-        if(currentModule === 'ty') {
+   if(currentModule === 'ty') {
             let currentScores = studentObj.scores || {};
-            
-            // 🌟 1. 核心判断：检查该学生是否导入过身体形态与机能数据
-            const hasBmiData = currentScores["体重指数(BMI)"] !== undefined || currentScores["BMI"] !== undefined || (currentScores["身高"] && currentScores["体重"]);
-            const hasLungData = currentScores["肺活量"] !== undefined;
+            // 体育课考核：仅保留常规体育科目，过滤体测指标
+            let tyProjs = ["50米", "立定跳远", "坐位体前屈"];
+            if (gender === '男') tyProjs.push("引体向上", "1000米");
+            else tyProjs.push("仰卧起坐", "800米");
 
-            let allowedProjs = [];
-            // 如果存在导入数据，优先排在最上面展示
-            if (hasBmiData) allowedProjs.push("体重指数(BMI)");
-            if (hasLungData) allowedProjs.push("肺活量");
-
-            // 追加常规测试科目
-            allowedProjs.push("50米", "立定跳远", "坐位体前屈");
-            if (gender === '男') allowedProjs.push("引体向上", "1000米");
-            else allowedProjs.push("仰卧起坐", "800米");
-
-            // 追加自定义添加的其它科目（排除身高体重等元数据文本）
             Object.keys(currentScores).forEach(p => {
                 let upper = p.toUpperCase();
-                if (upper === "身高" || upper === "体重" || upper === "BMI") return;
-                if (!allowedProjs.includes(p)) allowedProjs.push(p);
+                if (upper.includes("身高") || upper.includes("体重") || upper.includes("BMI") || upper.includes("肺活量")) return;
+                if (!tyProjs.includes(p)) tyProjs.push(p);
             });
 
             let fieldsHtml = '';
-            allowedProjs.forEach(proj => {
+            tyProjs.forEach(proj => {
                 let val = currentScores[proj] !== undefined ? currentScores[proj] : '';
-                // 兼容历史可能存为 BMI 键名的情况
-                if (proj === "体重指数(BMI)" && !val && currentScores["BMI"]) val = currentScores["BMI"];
-
                 let initialScore = queryStandardScore(proj, val, className, gender);
                 let displayScore = initialScore !== null ? initialScore : 0;
                 let badgeCls = initialScore !== null && initialScore > 0 ? 'has-val' : '';
 
-                // 对 BMI 额外显示其换算前的身高体重备注提示
-                let subHint = '';
-                if (proj === "体重指数(BMI)" && currentScores["身高"] && currentScores["体重"]) {
-                    subHint = `<span style="font-size:10px; color:#888; font-weight:normal;"> (${currentScores["身高"]}cm/${currentScores["体重"]}kg)</span>`;
-                }
-
                 fieldsHtml += `
                     <div class="score-row">
-                        <label style="font-size:13px;">${proj}${subHint}:</label>
+                        <label style="font-size:13px;">${proj}:</label>
                         <input type="text" id="modal-score-${proj}" class="student-score-field" 
                                inputmode="decimal" data-proj="${proj}" value="${val}" placeholder="未录入"
                                oninput="updateLiveScore(this, '${className}', '${gender}')">
@@ -1715,22 +2075,14 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
             });
 
             modalBody.innerHTML = `
-                <h3 style="margin-top:5px; text-align:center;">🏆 个人成绩单轨录入</h3>
-                <p style="text-align:center; font-size:14px; margin-bottom:10px;">学生：<b>${studentName}</b> (${className} / <span style="color:#e91e63;font-weight:bold;">${gender}</span>)</p>
+                <h3 style="margin-top:5px; text-align:center;">📋 体育课个人成绩评定</h3>
+                <p style="text-align:center; font-size:14px; margin-bottom:10px;">学生：<b>${studentName}</b> (${className} / ${gender})</p>
                 
-                <div class="live-total-score-wrapper" style="display: flex; gap: 10px; justify-content: space-around; padding: 12px 6px;">
-                    <div style="flex: 1; border-right: 1px dashed #90CAF9; padding-right: 5px;">
-                        <div style="font-size: 13px; font-weight: bold; color: #1565C0;">📚 期末总评</div>
-                        <div style="margin: 4px 0;"><b id="modalLiveTotalScore" style="font-size: 22px;">--</b></div>
-                        <span id="modalLiveTotalLevel" class="level-badge" style="display:inline-block;">--</span>
-                        <div style="font-size: 10px; color: #777; margin-top: 4px;">(项目均分80% + 考勤20%)</div>
-                    </div>
-                    <div style="flex: 1; padding-left: 5px;">
-                        <div style="font-size: 13px; font-weight: bold; color: #E65100;">🏃 体测健康总分</div>
-                        <div style="margin: 4px 0;"><b id="modalLiveFitnessScore" style="font-size: 22px; color: #E65100;">--</b></div>
-                        <span id="modalLiveFitnessLevel" class="level-badge" style="display:inline-block;">--</span>
-                        <div style="font-size: 10px; color: #777; margin-top: 4px;">(国标加权算分)</div>
-                    </div>
+                <div class="live-total-score-wrapper" style="padding: 10px;">
+                    <div style="font-size: 13px; font-weight: bold; color: #1565C0;">📚 期末总评</div>
+                    <div style="margin: 4px 0;"><b id="modalLiveTotalScore" style="font-size: 24px;">--</b></div>
+                    <span id="modalLiveTotalLevel" class="level-badge" style="display:inline-block;">--</span>
+                    <div style="font-size: 11px; color: #666; margin-top: 4px;">(平时项目均分 80% + 考勤打卡 20%)</div>
                 </div>
                 
                 <div id="modalScoreFieldsContainer" style="max-height:260px; overflow-y:auto; padding-right:5px; border-bottom:1px dashed #eee; margin-bottom:10px;">
@@ -1738,15 +2090,84 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
                 </div>
 
                 <div class="quick-add-form" style="border-bottom:none; padding: 5px 0 15px 0; background:transparent;">
-                    <input type="text" id="newProjNameInput" placeholder="自定义附加测试科目(仅记录)" style="flex:2;">
+                    <input type="text" id="newProjNameInput" placeholder="自定义考核科目(如: 篮球运球)" style="flex:2;">
                     <button onclick="addNewScoreFieldIntoModal('${className}', '${gender}')" style="flex:1; margin:0; background:#009688; padding:8px;">+ 科目</button>
                 </div>
 
-                <button onclick="saveStudentSingleScores('${className}', '${studentName}')" style="background-color: #2E7D32; font-weight: bold; margin-top:5px;">💾 保存并更新</button>
+                <button onclick="saveStudentSingleScores('${className}', '${studentName}')" style="background-color: #2E7D32; font-weight: bold;">💾 保存体育课成绩</button>
             `;
             document.getElementById('calendarModal').style.display = 'flex';
             refreshModalTotalScore(className, gender);
 
+        } else if(currentModule === 'tc') {
+            // 体质健康测试专属弹窗
+            let currentScores = studentObj.scores || {};
+            const rawH = currentScores["身高"] || '';
+            const rawW = currentScores["体重"] || '';
+            let curBMI = currentScores["体重指数(BMI)"] || '';
+            if(!curBMI && rawH && rawW) {
+                let hM = parseFloat(rawH) > 3 ? parseFloat(rawH)/100 : parseFloat(rawH);
+                if(hM > 0) curBMI = (parseFloat(rawW)/(hM*hM)).toFixed(1);
+            }
+
+            modalBody.innerHTML = `
+                <h3 style="margin-top:5px; text-align:center; color:#E65100;">🏃 国家体质健康测试专栏</h3>
+                <p style="text-align:center; font-size:14px; margin-bottom:10px;">学生：<b>${studentName}</b> (${className} / <span style="color:#e91e63;font-weight:bold;">${gender}</span>)</p>
+                
+                <div class="live-total-score-wrapper" style="background:#FFF3E0; border-color:#FFE0B2; color:#E65100; padding:10px;">
+                    <div style="font-size: 13px; font-weight: bold;">国家体质健康测试总分</div>
+                    <div style="margin: 4px 0;"><b id="modalLiveFitnessScore" style="font-size: 26px; color: #E65100;">--</b></div>
+                    <span id="modalLiveFitnessLevel" class="level-badge" style="display:inline-block;">--</span>
+                    <div style="font-size: 11px; color: #888; margin-top: 4px;">(国标加权算分：BMI、肺活量、50米、跳远、体前屈、仰卧/引体、800/1000米)</div>
+                </div>
+
+                <div id="modalScoreFieldsContainer" style="max-height:300px; overflow-y:auto; padding-right:5px; margin-bottom:10px;">
+                    <div class="score-row">
+                        <label>身高(cm):</label>
+                        <input type="number" step="0.1" id="tc-h" class="student-score-field" data-proj="身高" value="${rawH}" placeholder="厘米" oninput="updateTcLiveScore('${className}','${gender}')">
+                        <div class="live-score-badge" style="background:#eee;color:#666;">形态</div>
+                    </div>
+                    <div class="score-row">
+                        <label>体重(kg):</label>
+                        <input type="number" step="0.1" id="tc-w" class="student-score-field" data-proj="体重" value="${rawW}" placeholder="公斤" oninput="updateTcLiveScore('${className}','${gender}')">
+                        <div class="live-score-badge has-val" id="tc-bmi-badge">BMI:${curBMI || '--'}</div>
+                    </div>
+                    <div class="score-row">
+                        <label>肺活量(ml):</label>
+                        <input type="number" class="student-score-field" data-proj="肺活量" value="${currentScores['肺活量']||''}" placeholder="毫升" oninput="updateTcLiveScore('${className}','${gender}')">
+                        <div class="live-score-badge" id="live-badge-肺活量">0分</div>
+                    </div>
+                    <div class="score-row">
+                        <label>50米跑(秒):</label>
+                        <input type="number" step="0.01" class="student-score-field" data-proj="50米" value="${currentScores['50米']||''}" placeholder="秒" oninput="updateTcLiveScore('${className}','${gender}')">
+                        <div class="live-score-badge" id="live-badge-50米">0分</div>
+                    </div>
+                    <div class="score-row">
+                        <label>立定跳远(cm):</label>
+                        <input type="number" class="student-score-field" data-proj="立定跳远" value="${currentScores['立定跳远']||''}" placeholder="厘米" oninput="updateTcLiveScore('${className}','${gender}')">
+                        <div class="live-score-badge" id="live-badge-立定跳远">0分</div>
+                    </div>
+                    <div class="score-row">
+                        <label>坐位体前屈(cm):</label>
+                        <input type="number" step="0.1" class="student-score-field" data-proj="坐位体前屈" value="${currentScores['坐位体前屈']||''}" placeholder="厘米" oninput="updateTcLiveScore('${className}','${gender}')">
+                        <div class="live-score-badge" id="live-badge-坐位体前屈">0分</div>
+                    </div>
+                    <div class="score-row">
+                        <label>${gender==='男'?'引体向上(次)':'仰卧起坐(次)'}:</label>
+                        <input type="number" class="student-score-field" data-proj="${gender==='男'?'引体向上':'仰卧起坐'}" value="${gender==='男'?(currentScores['引体向上']||''):(currentScores['仰卧起坐']||'')}" placeholder="次数" oninput="updateTcLiveScore('${className}','${gender}')">
+                        <div class="live-score-badge" id="live-badge-${gender==='男'?'引体向上':'仰卧起坐'}">0分</div>
+                    </div>
+                    <div class="score-row">
+                        <label>${gender==='男'?'1000米跑':'800米跑'}:</label>
+                        <input type="text" class="student-score-field" data-proj="${gender==='男'?'1000米':'800米'}" value="${gender==='男'?(currentScores['1000米']||''):(currentScores['800米']||'')}" placeholder="分.秒(如: 3.45)" oninput="updateTcLiveScore('${className}','${gender}')">
+                        <div class="live-score-badge" id="live-badge-${gender==='男'?'1000米':'800米'}">0分</div>
+                    </div>
+                </div>
+
+                <button onclick="saveStudentSingleScores('${className}', '${studentName}')" style="background-color: #E65100; font-weight: bold;">💾 保存体测成绩</button>
+            `;
+            document.getElementById('calendarModal').style.display = 'flex';
+            updateTcLiveScore(className, gender);
         } else if(currentModule === 'tx') {
             const historyKey = `${className}_${studentName}`;
             let thisMonthScores = (scoreHistory && scoreHistory[currentMonth] && scoreHistory[currentMonth][historyKey]) ? scoreHistory[currentMonth][historyKey] : {};
@@ -2073,7 +2494,58 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
             renderAccordion();
         }
     }
+function updateTcLiveScore(className, gender) {
+    const fields = document.querySelectorAll('.student-score-field');
+    let tempScores = {};
+    fields.forEach(f => {
+        const p = f.getAttribute('data-proj');
+        const v = f.value.trim();
+        if(v !== '') tempScores[p] = v;
+    });
 
+    // 1. BMI 联动计算
+    const hElem = document.getElementById('tc-h');
+    const wElem = document.getElementById('tc-w');
+    let h = hElem ? parseFloat(hElem.value) : 0;
+    let w = wElem ? parseFloat(wElem.value) : 0;
+    let bmiScore = 0;
+    
+    if (!isNaN(h) && !isNaN(w) && h > 0 && w > 0) {
+        let hM = h > 3 ? h / 100 : h;
+        let bmiVal = (w / (hM * hM)).toFixed(1);
+        tempScores["体重指数(BMI)"] = bmiVal;
+        bmiScore = queryStandardScore("体重指数(BMI)", bmiVal, className, gender) || 0;
+        const bmiBadge = document.getElementById('tc-bmi-badge');
+        if (bmiBadge) bmiBadge.innerText = `BMI:${bmiVal} (${bmiScore}分)`;
+    } else {
+        const bmiBadge = document.getElementById('tc-bmi-badge');
+        if (bmiBadge) bmiBadge.innerText = `BMI: --`;
+    }
+
+    // 2. 逐项刷新分值 Badge
+    fields.forEach(f => {
+        const p = f.getAttribute('data-proj');
+        if (p === '身高' || p === '体重') return;
+        const b = document.getElementById(`live-badge-${p}`);
+        if (b) {
+            let s = queryStandardScore(p, f.value.trim(), className, gender);
+            let displayPts = s !== null ? s : 0;
+            b.innerText = `${displayPts}分`;
+            if (displayPts > 0) b.classList.add('has-val');
+            else b.classList.remove('has-val');
+        }
+    });
+
+    // 3. 计算体测总加权得分
+    const fitness = calculateFitnessTotalScore(tempScores, className, gender);
+    const scoreElem = document.getElementById('modalLiveFitnessScore');
+    const lvlElem = document.getElementById('modalLiveFitnessLevel');
+    if (scoreElem) scoreElem.innerText = `${fitness.score} 分`;
+    if (lvlElem) {
+        lvlElem.innerText = fitness.level;
+        lvlElem.className = "level-badge " + getLevelClass(fitness.level);
+    }
+}
     function cycleStatus(btn) {
         const currentStatus = btn.getAttribute('data-status') || 'normal';
         let currentIndex = statusSequence.indexOf(currentStatus);
@@ -2581,7 +3053,7 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
         };
 
         // 🌟 3. 循环遍历三大系统模块，提取各自的所有数据
-        const modules = ['ty', 'tx', 'db'];
+        const modules = ['ty', 'tc', 'tx', 'db'];
         modules.forEach(mod => {
             payload[`${mod}_students`] = JSON.parse(localStorage.getItem(`${mod}_students`)) || null;
             payload[`${mod}_records`] = JSON.parse(localStorage.getItem(`${mod}_records`)) || null;
@@ -2609,7 +3081,7 @@ if (!localStorage.getItem(`base_year_${cls}`)) {
                     // ==========================================
                     // 🌟 新版逻辑：全量恢复所有三大模块及系统设置
                     // ==========================================
-                    const modules = ['ty', 'tx', 'db'];
+                    const modules = ['ty', 'tc', 'tx', 'db'];
                     modules.forEach(mod => {
                         if (backData[`${mod}_students`] !== undefined) localStorage.setItem(`${mod}_students`, JSON.stringify(backData[`${mod}_students`]));
                         if (backData[`${mod}_records`] !== undefined) localStorage.setItem(`${mod}_records`, JSON.stringify(backData[`${mod}_records`]));
@@ -2742,6 +3214,368 @@ function clearAllScoresOnly() {
     }
 
     renderAccordion();
+}
+// ================== 教师账号与权限管理引擎 ==================
+let currentUser = JSON.parse(sessionStorage.getItem('sys_current_user')) || null;
+let teacherAccounts = JSON.parse(localStorage.getItem('sys_teacher_accounts')) || {
+    "admin": { password: "admin", role: "admin", classes: [] }
+};
+
+function checkUserLoginState() {
+    const userDisplay = document.getElementById('currentUserDisplay');
+    const roleDisplay = document.getElementById('currentUserRole');
+    const adminBtn = document.getElementById('adminManageBtn');
+    
+    if (!currentUser) {
+        if (userDisplay) userDisplay.innerText = '未登录';
+        if (roleDisplay) roleDisplay.innerText = '游客';
+        if (adminBtn) adminBtn.style.display = 'none';
+        openLoginModal();
+        return;
+    }
+
+    if (userDisplay && roleDisplay) {
+        userDisplay.innerText = currentUser.username;
+        roleDisplay.innerText = currentUser.role === 'admin' ? '管理员' : '任课教师';
+        if (adminBtn) adminBtn.style.display = currentUser.role === 'admin' ? 'block' : 'none';
+    }
+}
+function openLoginModal() {
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('loginModal').style.display = 'flex';
+}
+
+function handleLoginSubmit() {
+    const u = document.getElementById('loginUsername').value.trim();
+    const p = document.getElementById('loginPassword').value.trim();
+    if (!u || !p) { alert('请输入账号和密码！'); return; }
+
+    if (u === 'admin') {
+        let adminPwd = teacherAccounts["admin"] ? teacherAccounts["admin"].password : "admin";
+        if (p === adminPwd || p === "admin888") {
+            currentUser = { username: 'admin', role: 'admin', classes: [] };
+            sessionStorage.setItem('sys_current_user', JSON.stringify(currentUser));
+            document.getElementById('loginModal').style.display = 'none';
+            showToast('已登录管理员身份');
+            checkUserLoginState();
+            renderAccordion();
+            return;
+        } else {
+            alert('管理员密码错误！');
+            return;
+        }
+    }
+
+    if (teacherAccounts[u] && teacherAccounts[u].password === p) {
+        currentUser = { username: u, role: 'teacher', classes: teacherAccounts[u].classes || [] };
+        sessionStorage.setItem('sys_current_user', JSON.stringify(currentUser));
+        document.getElementById('loginModal').style.display = 'none';
+        showToast(`欢迎教师：${u}`);
+        checkUserLoginState();
+        renderAccordion();
+    } else {
+        alert('账号不存在或密码错误！');
+    }
+}
+
+function openTeacherAdminModal() {
+    if (currentUser.role !== 'admin') { alert('无权限访问管理后台！'); return; }
+    
+    // 渲染全校班级复选框列表供勾选绑定
+    const container = document.getElementById('adminClassCheckboxList');
+    container.innerHTML = '';
+    const allCls = Object.keys(students);
+    if (allCls.length === 0) {
+        container.innerHTML = '<span style="color:#999;font-size:11px;">系统暂无班级，请先在主页上传名单Excel</span>';
+    } else {
+        allCls.forEach(c => {
+            const effName = typeof getEffectiveClassName === 'function' ? getEffectiveClassName(c) : c;
+            container.innerHTML += `
+                <label style="font-size:12px; display:inline-flex; align-items:center; gap:2px; margin-right:6px; cursor:pointer;">
+                    <input type="checkbox" name="assignClassChk" value="${c}"> ${effName}
+                </label>
+            `;
+        });
+    }
+    renderTeacherAccountList();
+    document.getElementById('teacherAdminModal').style.display = 'flex';
+}
+
+function saveTeacherAccount() {
+    const tName = document.getElementById('newTeacherName').value.trim();
+    const tPwd = document.getElementById('newTeacherPwd').value.trim();
+    if (!tName || !tPwd) { alert('请输入教师姓名和密码！'); return; }
+    if (tName === 'admin') { alert('不能使用 admin 作为普通教师账号！'); return; }
+
+    const chks = document.querySelectorAll('input[name="assignClassChk"]:checked');
+    const selectedClasses = Array.from(chks).map(el => el.value);
+
+    teacherAccounts[tName] = { password: tPwd, role: 'teacher', classes: selectedClasses };
+    localStorage.setItem('sys_teacher_accounts', JSON.stringify(teacherAccounts));
+
+    document.getElementById('newTeacherName').value = '';
+    document.querySelectorAll('input[name="assignClassChk"]').forEach(el => el.checked = false);
+    renderTeacherAccountList();
+    showToast(`教师【${tName}】配置已更新！`);
+}
+
+function deleteTeacherAccount(tName) {
+    if (confirm(`确定要移除教师【${tName}】账号吗？`)) {
+        delete teacherAccounts[tName];
+        localStorage.setItem('sys_teacher_accounts', JSON.stringify(teacherAccounts));
+        renderTeacherAccountList();
+    }
+}
+
+function renderTeacherAccountList() {
+    const listCont = document.getElementById('teacherAccountListContainer');
+    listCont.innerHTML = '';
+    const tNames = Object.keys(teacherAccounts).filter(k => k !== 'admin');
+
+    if (tNames.length === 0) {
+        listCont.innerHTML = '<div style="color:#aaa; font-size:12px; text-align:center; padding:10px;">暂无分配记录</div>';
+        return;
+    }
+
+    tNames.forEach(name => {
+        const item = teacherAccounts[name];
+        const clsNames = (item.classes || []).map(c => typeof getEffectiveClassName === 'function' ? getEffectiveClassName(c) : c).join('、') || '暂未绑定班级';
+        listCont.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed #eee; font-size:12px;">
+                <div>
+                    <b>${name}</b> <span style="color:#888;">(密: ${item.password})</span>
+                    <div style="color:#1976D2; font-size:11px; margin-top:2px;">授课班级: ${clsNames}</div>
+                </div>
+                <button onclick="deleteTeacherAccount('${name}')" style="width:auto; margin:0; padding:2px 6px; font-size:11px; background:#e53935;">删除</button>
+            </div>
+        `;
+    });
+}
+// 🌟 退出登录：清空会话并弹出登录窗口强制重新登录
+function handleLogout() {
+    if (confirm('确定要退出当前账号吗？')) {
+        sessionStorage.removeItem('sys_current_user');
+        currentUser = null;
+        checkUserLoginState();
+        renderAccordion();
+        openLoginModal();
+    }
+}
+// 初始化体测班级下拉列表
+function initTcClassOptions() {
+    const clsSelect = document.getElementById('tcClassSelect');
+    if (!clsSelect) return;
+    
+    let classNames = Object.keys(students);
+    if (currentUser && currentUser.role === 'teacher') {
+        classNames = classNames.filter(c => (currentUser.classes || []).includes(c));
+    }
+    
+    let html = '<option value="">-- 第一步：请选择班级 --</option>';
+    classNames.forEach(c => {
+        const effName = getEffectiveClassName(c);
+        html += `<option value="${c}">${effName} (${students[c].length}人)</option>`;
+    });
+    clsSelect.innerHTML = html;
+}
+
+// 联动体测项目下拉列表
+function renderTcProjectList() {
+    const cls = document.getElementById('tcClassSelect').value;
+    const projSelect = document.getElementById('tcProjectSelect');
+    const workspace = document.getElementById('tcBatchWorkspace');
+    if (workspace) workspace.style.display = 'none';
+
+    if (!cls) {
+        projSelect.innerHTML = '<option value="">-- 第二步：选择测试项目 --</option>';
+        return;
+    }
+
+    projSelect.innerHTML = `
+        <option value="">-- 第二步：选择测试项目 --</option>
+        <option value="50米">50米跑 (秒)</option>
+        <option value="立定跳远">立定跳远 (cm)</option>
+        <option value="坐位体前屈">坐位体前屈 (cm)</option>
+        <option value="肺活量">肺活量 (ml)</option>
+        <option value="身高">身高 (cm)</option>
+        <option value="体重">体重 (kg)</option>
+        <option value="str">力量类 (男生引体 / 女生仰卧)</option>
+        <option value="runL">耐力跑 (男生1000m / 女生800m)</option>
+    `;
+}
+
+// 渲染选中项目的全班快速采集工作台
+function renderTcBatchEntryTable() {
+    const cls = document.getElementById('tcClassSelect').value;
+    const proj = document.getElementById('tcProjectSelect').value;
+    const workspace = document.getElementById('tcBatchWorkspace');
+    if (!cls || !proj) {
+        if (workspace) workspace.style.display = 'none';
+        removeStopwatchPanel();
+        return;
+    }
+
+    const studentList = students[cls] || [];
+    if (studentList.length === 0) {
+        workspace.innerHTML = `<div style="text-align:center; color:#888; padding:15px;">该班暂无学生，请先导入名册。</div>`;
+        workspace.style.display = 'block';
+        removeStopwatchPanel();
+        return;
+    }
+
+    let rowsHtml = '';
+    studentList.forEach((s, idx) => {
+        let actualProjName = proj;
+        if (proj === 'str') actualProjName = s.gender === '男' ? '引体向上' : '仰卧起坐';
+        if (proj === 'runL') actualProjName = s.gender === '男' ? '1000米' : '800米';
+
+        const sScores = s.scores || {};
+        const curVal = sScores[actualProjName] || '';
+        let initialPts = (actualProjName === '身高' || actualProjName === '体重') ? '' : (queryStandardScore(actualProjName, curVal, cls, s.gender) || 0);
+
+        rowsHtml += `
+            <tr style="border-bottom:1px solid #eee; background:${idx % 2 === 0 ? '#fff' : '#fafafa'};">
+                <td style="padding:10px 4px; font-size:12px; color:#999; text-align:center;">${idx + 1}</td>
+                <td style="padding:10px 4px; font-weight:800; font-size:16px; color:#0D47A1; cursor:pointer;" 
+                    class="tc-student-click-target" onclick="handleTcNameClick(${idx})">
+                    ${s.name}
+                    <span style="font-size:10px; display:block; color:#777; font-weight:normal;">${s.gender}</span>
+                </td>
+                <td style="padding:6px 4px;">
+                    <input type="text" inputmode="decimal" class="tc-batch-input" 
+                           id="tc-row-${idx}" data-idx="${idx}" data-name="${s.name}" data-gender="${s.gender}" data-proj="${actualProjName}"
+                           value="${curVal}" placeholder="${proj==='50米'?'秒表/键入':'成绩'}"
+                           style="width:100%; margin:0; padding:8px 4px; font-size:16px; font-weight:bold; border:1px solid #FFB74D; border-radius:6px; text-align:center;"
+                           oninput="onTcBatchScoreInput(this, '${cls}')"
+                           onkeydown="handleTcInputNavigation(event, ${idx}, ${studentList.length})">
+                </td>
+                <td style="padding:10px 4px; text-align:center;">
+                    <span id="tc-badge-${idx}" class="live-score-badge ${initialPts > 0 ? 'has-val' : ''}" style="width:auto; min-width:44px; display:inline-block; font-size:12px;">
+                        ${actualProjName === '身高' || actualProjName === '体重' ? '-' : initialPts + '分'}
+                    </span>
+                </td>
+            </tr>
+        `;
+    });
+
+    workspace.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:0 2px;">
+            <div style="font-size:13px; font-weight:bold; color:#BF360C;">
+                ⚡ 当前采集：<span style="font-size:15px; color:#E65100;">${proj === 'str' ? '力量类' : (proj === 'runL' ? '耐力跑' : proj)}</span>
+            </div>
+            <button onclick="saveAndExitTcProject()" style="background:#E65100; margin:0; width:auto; padding:6px 14px; font-size:13px; font-weight:bold; border-radius:6px;">💾 完成保存</button>
+        </div>
+        <div style="max-height:55vh; overflow-y:auto; border:1px solid #FFE0B2; border-radius:8px; background:#fff; -webkit-overflow-scrolling:touch;">
+            <table style="width:100%; border-collapse:collapse;">
+                <thead style="position:sticky; top:0; background:#FFE0B2; color:#BF360C; font-size:12px; z-index:2;">
+                    <tr>
+                        <th style="padding:6px 2px; width:28px; text-align:center;">#</th>
+                        <th style="padding:6px 4px; text-align:left;">姓名 (点名填成绩)</th>
+                        <th style="padding:6px; width:44%; text-align:center;">成绩输入</th>
+                        <th style="padding:6px 2px; width:52px; text-align:center;">得分</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        </div>
+        <button onclick="saveAndExitTcProject()" style="background:#2E7D32; font-size:15px; font-weight:bold; margin-top:10px; padding:12px; border-radius:8px;">💾 保存当前成绩并选下一项</button>
+    `;
+    workspace.style.display = 'block';
+
+    // 🌟 如果选中的项目是 50米，弹出单手秒表控制台
+    if (proj === '50米') {
+        renderStopwatchFloatPanel();
+    } else {
+        removeStopwatchPanel();
+    }
+}
+
+// 连续录入时实时算分联动
+function onTcBatchScoreInput(inputElem, className) {
+    const idx = inputElem.getAttribute('data-idx');
+    const gender = inputElem.getAttribute('data-gender');
+    const proj = inputElem.getAttribute('data-proj');
+    const val = inputElem.value.trim();
+    const badge = document.getElementById(`tc-badge-${idx}`);
+
+    if (proj === '身高' || proj === '体重') {
+        if (badge) badge.innerText = '-';
+        return;
+    }
+
+    const calculated = queryStandardScore(proj, val, className, gender);
+    let pts = calculated !== null ? calculated : 0;
+    if (badge) {
+        badge.innerText = pts + "分";
+        if (pts > 0) badge.classList.add('has-val');
+        else badge.classList.remove('has-val');
+    }
+}
+
+// 键盘无缝导航：支持 Enter、下方向键跳下一位，上方向键返回上一位
+function handleTcInputNavigation(e, currentIdx, totalLength) {
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextIdx = currentIdx + 1;
+        if (nextIdx < totalLength) {
+            const nextInput = document.getElementById(`tc-row-${nextIdx}`);
+            if (nextInput) { nextInput.focus(); nextInput.select(); }
+        }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevIdx = currentIdx - 1;
+        if (prevIdx >= 0) {
+            const prevInput = document.getElementById(`tc-row-${prevIdx}`);
+            if (prevInput) { prevInput.focus(); prevInput.select(); }
+        }
+    }
+}
+
+// 测完单项后一键存盘，并复位选择器方便换选其他项目
+function saveAndExitTcProject() {
+    const cls = document.getElementById('tcClassSelect').value;
+    if (!cls) return;
+
+    const inputs = document.querySelectorAll('.tc-batch-input');
+    let updatedCount = 0;
+
+    inputs.forEach(inp => {
+        const sName = inp.getAttribute('data-name');
+        const proj = inp.getAttribute('data-proj');
+        const val = inp.value.trim();
+
+        const sObj = students[cls].find(s => s.name === sName);
+        if (sObj) {
+            if (!sObj.scores) sObj.scores = {};
+            if (val === '') {
+                delete sObj.scores[proj];
+            } else {
+                sObj.scores[proj] = val;
+                updatedCount++;
+            }
+
+            // 若采集的是身高或体重，自动联锁计算并缓存 BMI
+            if (proj === '身高' || proj === '体重') {
+                const h = parseFloat(sObj.scores['身高']);
+                const w = parseFloat(sObj.scores['体重']);
+                if (!isNaN(h) && !isNaN(w) && h > 0) {
+                    let hM = h > 3 ? h / 100 : h;
+                    sObj.scores["体重指数(BMI)"] = (w / (hM * hM)).toFixed(1);
+                }
+            }
+        }
+    });
+
+    saveModuleData();
+    showToast(`✅ 已保存本项成绩 (${updatedCount}人次)`);
+
+    // 隐藏采集列表，清空项目选择框，方便直接换选下一项
+    const projSelect = document.getElementById('tcProjectSelect');
+    if (projSelect) projSelect.value = '';
+    const workspace = document.getElementById('tcBatchWorkspace');
+    if (workspace) workspace.style.display = 'none';
+    if (projSelect) projSelect.focus();
 }
 </script>
 </body>
