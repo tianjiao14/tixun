@@ -488,6 +488,16 @@
     // ================== 1. 内置默认标准静态备份库 ==================
     const DEFAULT_TY_STDS = {
 weights: { bmi: 0.15, lung: 0.15, run50: 0.20, jump: 0.10, sit: 0.10, runL: 0.20, str: 0.10 },
+bonusRule: {
+            run: { 
+                "男": [4, 8, 12, 16, 20, 23, 26, 29, 32, 35], // 1-10分对应的秒数减少量
+                "女": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]  // 1-10分对应的秒数减少量
+            },
+            str: { 
+                "男": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],         // 引体向上超过次数
+                "女": [2, 4, 6, 7, 8, 9, 10, 11, 12, 13]       // 仰卧起坐超过次数
+            }
+        },
         bmi: {
             "初一男": [15.4, 22.1, 24.9], "初一女": [14.7, 21.7, 24.4],
             "初二男": [15.6, 22.5, 25.2], "初二女": [15.2, 22.2, 24.8],
@@ -904,36 +914,34 @@ function clearPendingTargetHighlight() {
     });
 }
 
-// 点击学生名字的连续分配
+// 点击学生名字：秒表分配态录入成绩；平时态弹出全项详细成绩编辑卡
 function handleTcNameClick(idx) {
     const input = document.getElementById(`tc-row-${idx}`);
     const cls = document.getElementById('tcClassSelect').value;
     if (!input) return;
 
     if (swAssignStep === 1) {
-        // 第一次点：填入1道成绩
+        // 第一次点：录入1道
         const t1 = swLane1Time || document.getElementById('swTimeDisplay').innerText;
         input.value = t1;
         onTcBatchScoreInput(input, cls);
-        showToast(`✅ 1道【${input.getAttribute('data-name')}】：${t1}s ➔ 紧接着请点【第2道姓名】`);
-        
-        // 步进到第2道
+        showToast(`✅ 1道【${input.getAttribute('data-name')}】：${t1}s ➔ 接着点【第2道姓名】`);
         swAssignStep = 2;
+        return;
     } else if (swAssignStep === 2) {
-        // 第二次点：填入2道成绩
+        // 第二次点：录入2道
         const t2 = swLane2Time || document.getElementById('swTimeDisplay').innerText;
         input.value = t2;
         onTcBatchScoreInput(input, cls);
-        showToast(`🎉 2道【${input.getAttribute('data-name')}】：${t2}s 录入完毕！`);
-        
-        // 两道均分配完毕，复位高亮
+        showToast(`🎉 2道【${input.getAttribute('data-name')}】：${t2}s 录入完成！`);
         swAssignStep = 0;
         clearPendingTargetHighlight();
-    } else {
-        // 未处于计时连录模式，直接聚焦输入框方便手动改写
-        input.focus();
-        input.select();
+        return;
     }
+
+    // 🌟 平时未在秒表分配时，点名字直接弹出该学生的体质测试详细成绩编辑卡
+    const studentName = input.getAttribute('data-name');
+    openScoreModal(cls, studentName);
 }
    function updateLiveTxTotal(gender) {
         let total = 0;
@@ -1160,22 +1168,31 @@ function manualChangeSemester(targetSem) {
         refreshSemesterSelector();
     }
 
-   function loadModuleData() {
-        const prefix = currentModule; 
-        students = JSON.parse(localStorage.getItem(`${prefix}_students`)) || {};
-        
-        // 🌟 体验优化：如果切换到体测模式发现尚未导入体测名单，自动继承体育课名册
-        if (prefix === 'tc' && Object.keys(students).length === 0) {
-            students = JSON.parse(localStorage.getItem('ty_students')) || {};
-        }
-
-        records = JSON.parse(localStorage.getItem(`${prefix}_records`)) || {};
-        openedClassesState = JSON.parse(localStorage.getItem(`${prefix}_open_state`)) || {};
-        if (currentModule === 'tx') {
-            scoreHistory = JSON.parse(localStorage.getItem(`${prefix}_score_history`)) || {};
-        }
-        initializeSystemStandards();
+  function loadModuleData() {
+    const prefix = currentModule; 
+    students = JSON.parse(localStorage.getItem(`${prefix}_students`)) || {};
+    
+    // 🌟 核心隔离：体测初次继承体育课时，只继承【姓名、班级、性别】，强制将 scores 清空为空对象，互不干扰！
+    if (prefix === 'tc' && Object.keys(students).length === 0) {
+        let tyStudents = JSON.parse(localStorage.getItem('ty_students')) || {};
+        students = {};
+        Object.keys(tyStudents).forEach(cls => {
+            students[cls] = tyStudents[cls].map(s => ({
+                name: s.name,
+                gender: s.gender,
+                scores: {} // 纯净初始化，不混入体育课平时成绩
+            }));
+        });
+        localStorage.setItem('tc_students', JSON.stringify(students));
     }
+
+    records = JSON.parse(localStorage.getItem(`${prefix}_records`)) || {};
+    openedClassesState = JSON.parse(localStorage.getItem(`${prefix}_open_state`)) || {};
+    if (currentModule === 'tx') {
+        scoreHistory = JSON.parse(localStorage.getItem(`${prefix}_score_history`)) || {};
+    }
+    initializeSystemStandards();
+}
 
     function saveModuleData() {
         const prefix = currentModule;
@@ -1318,32 +1335,114 @@ function queryStandardScore(projectName, rawValue, className, gender) {
     }
 }
 function calculateFitnessTotalScore(scoresObj, className, gender) {
-    if (!scoresObj) return { score: 0, level: '不及格' };
+    if (!scoresObj) return { score: 0, level: '不及格', baseScore: 0, bonusScore: 0 };
 
-    const getScore = (nameKeywords) => {
+    initializeSystemStandards();
+
+    // 1. 获取有效年级基准
+    const effectiveCls = typeof getEffectiveClassName === 'function' ? getEffectiveClassName(className) : (className || "");
+    let gradeKey = "初一"; 
+    ["初一","初二","初三","高一","高二","高三"].forEach(g => { if(effectiveCls.includes(g)) gradeKey = g; });
+    const stdKey = `${gradeKey}${gender}`;
+
+    // 辅助取值
+    const getVal = (keywords) => {
         for (let key in scoresObj) {
-            if (nameKeywords.some(kw => key.includes(kw))) {
-                let s = queryStandardScore(key, scoresObj[key], className, gender);
-                return s !== null ? s : 0;
+            if (keywords.some(kw => key.includes(kw))) {
+                let v = scoresObj[key];
+                if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
             }
         }
-        return 0;
+        return '';
     };
 
-    const sBMI = getScore(["BMI", "体重指数"]);
-    const sVital = getScore(["肺活量"]);
-    const s50m = getScore(["50米"]);
-    const sSit = getScore(["体前屈"]);
-    const sJump = getScore(["跳远"]);
-    const sStr = gender === '男' ? getScore(["引体"]) : getScore(["仰卧"]);
-    const sRunL = gender === '男' ? getScore(["1000米"]) : getScore(["800米"]);
+    const getPts = (proj, rawVal) => {
+        if (!rawVal) return 0;
+        let s = queryStandardScore(proj, rawVal, className, gender);
+        return s !== null ? s : 0;
+    };
 
-    const total = (sBMI * 0.15) + (sVital * 0.15) + (s50m * 0.20) + (sSit * 0.10) + 
-                  (sJump * 0.10) + (sStr * 0.10) + (sRunL * 0.20);
-    const finalScore = Math.round(total * 10) / 10;
+    // 2. 基础常规项目得分
+    const sBMI = getPts("体重指数(BMI)", getVal(["BMI", "体重指数"]));
+    const sVital = getPts("肺活量", getVal(["肺活量"]));
+    const s50m = getPts("50米", getVal(["50米", "50"]));
+    const sSit = getPts("坐位体前屈", getVal(["体前屈"]));
+    const sJump = getPts("立定跳远", getVal(["跳远"]));
+
+    const strProjName = gender === '男' ? "引体向上" : "仰卧起坐";
+    const rawStrVal = getVal(["引体", "仰卧"]);
+    const sStr = getPts(strProjName, rawStrVal);
+
+    const runLProjName = gender === '男' ? "1000米" : "800米";
+    const rawRunLVal = getVal(["1000米", "800米", "1000", "800"]);
+    const sRunL = getPts(runLProjName, rawRunLVal);
+
+    // 标准权重基准分 (满分100分)
+    const baseTotal = (sBMI * 0.15) + (sVital * 0.15) + (s50m * 0.20) + (sSit * 0.10) + 
+                      (sJump * 0.10) + (sStr * 0.10) + (sRunL * 0.20);
+    const finalBaseScore = Math.round(baseTotal * 10) / 10;
+
+    // 3. 🌟 满分超额加分算法 (最高20分：耐力跑最高10分 + 力量类最高10分)
+    let bonusRun = 0;
+    let bonusStr = 0;
+    const bonusRule = (currentTYStandards && currentTYStandards.bonusRule) ? currentTYStandards.bonusRule : DEFAULT_TY_STDS.bonusRule;
+
+    if (bonusRule) {
+        // 耐力跑加分计算（当取得100分满分时触发）
+        if (sRunL >= 100 && rawRunLVal && currentTYStandards.runL && currentTYStandards.runL[stdKey]) {
+            let actualSeconds = 0;
+            if (String(rawRunLVal).includes(':')) {
+                let p = String(rawRunLVal).split(':');
+                actualSeconds = (parseInt(p[0], 10) || 0) * 60 + (parseFloat(p[1]) || 0);
+            } else if (String(rawRunLVal).includes('.')) {
+                let p = String(rawRunLVal).split('.');
+                actualSeconds = (parseInt(p[0], 10) || 0) * 60 + (parseFloat(p[1]) || 0);
+            } else {
+                actualSeconds = parseFloat(rawRunLVal) || 0;
+            }
+
+            const base100Time = currentTYStandards.runL[stdKey][0][0]; // 满分对应的基准秒数
+            const diffSec = base100Time - actualSeconds; // 比满分多快了多少秒
+
+            if (diffSec > 0 && bonusRule.run && bonusRule.run[gender]) {
+                const ladder = bonusRule.run[gender];
+                for (let i = ladder.length - 1; i >= 0; i--) {
+                    if (diffSec >= ladder[i]) {
+                        bonusRun = i + 1; // 对应 1 - 10 分
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 力量类加分计算（当取得100分满分时触发）
+        if (sStr >= 100 && rawStrVal && currentTYStandards.str && currentTYStandards.str[stdKey]) {
+            const actualCount = parseFloat(rawStrVal) || 0;
+            const base100Count = currentTYStandards.str[stdKey][0][0]; // 满分基准次数
+            const diffCount = actualCount - base100Count; // 超过满分多少次
+
+            if (diffCount > 0 && bonusRule.str && bonusRule.str[gender]) {
+                const ladder = bonusRule.str[gender];
+                for (let i = ladder.length - 1; i >= 0; i--) {
+                    if (diffCount >= ladder[i]) {
+                        bonusStr = i + 1; // 对应 1 - 10 分
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    const totalBonus = bonusRun + bonusStr;
+    const finalScore = Math.round((finalBaseScore + totalBonus) * 10) / 10;
+
     return {
-        score: finalScore,
-        level: getLevelText(finalScore)
+        score: finalScore,               // 最终总分 (含加分)
+        baseScore: finalBaseScore,       // 基础满分100加权分
+        bonusScore: totalBonus,          // 累加附加分 (最高20)
+        bonusRun: bonusRun,
+        bonusStr: bonusStr,
+        level: getLevelText(finalBaseScore) // 等级依然根据基础得分判定
     };
 }
     // ================== 4. ⚙️评分标准可视化配置编辑器逻辑 ==================
@@ -1699,7 +1798,7 @@ let defaultStandardsVisible = false;
                     if (currentUser && currentUser.role === 'teacher') {
                         if (!currentUser.classes.includes(cls)) {
                             currentUser.classes.push(cls);
-                            sessionStorage.setItem('sys_current_user', JSON.stringify(currentUser));
+                            localStorage.setItem('sys_current_user', JSON.stringify(currentUser));
                             if (teacherAccounts[currentUser.username]) {
                                 teacherAccounts[currentUser.username].classes = currentUser.classes;
                                 localStorage.setItem('sys_teacher_accounts', JSON.stringify(teacherAccounts));
@@ -2339,7 +2438,52 @@ let defaultStandardsVisible = false;
             document.getElementById('calendarModal').style.display = 'flex';
         }
     }
-    // 体育课专用的：动态添加自定义科目功能
+    function saveStudentTcScores(className, studentName) {
+    const studentObj = students[className].find(s => s.name === studentName);
+    if (!studentObj) return;
+    if (!studentObj.scores) studentObj.scores = {};
+
+    const gender = studentObj.gender || '男';
+    const h = document.getElementById('tc-h') ? document.getElementById('tc-h').value.trim() : '';
+    const w = document.getElementById('tc-w') ? document.getElementById('tc-w').value.trim() : '';
+    
+    if (h) studentObj.scores["身高"] = h; else delete studentObj.scores["身高"];
+    if (w) studentObj.scores["体重"] = w; else delete studentObj.scores["体重"];
+    if (h && w) {
+        let hM = parseFloat(h) > 3 ? parseFloat(h) / 100 : parseFloat(h);
+        studentObj.scores["体重指数(BMI)"] = (parseFloat(w) / (hM * hM)).toFixed(1);
+    }
+
+    const assignField = (domSelector, projName) => {
+        const el = document.querySelector(domSelector);
+        if (el) {
+            let v = el.value.trim();
+            if (v) studentObj.scores[projName] = v; else delete studentObj.scores[projName];
+        }
+    };
+
+    assignField('.student-score-field[data-proj="肺活量"]', '肺活量');
+    assignField('.student-score-field[data-proj="50米"]', '50米');
+    assignField('.student-score-field[data-proj="立定跳远"]', '立定跳远');
+    assignField('.student-score-field[data-proj="坐位体前屈"]', '坐位体前屈');
+    
+    if (gender === '男') {
+        assignField('.student-score-field[data-proj="引体向上"]', '引体向上');
+        assignField('.student-score-field[data-proj="1000米"]', '1000米');
+    } else {
+        assignField('.student-score-field[data-proj="仰卧起坐"]', '仰卧起坐');
+        assignField('.student-score-field[data-proj="800米"]', '800米');
+    }
+
+    saveModuleData();
+    localStorage.setItem('tc_students', JSON.stringify(students));
+    document.getElementById('calendarModal').style.display = 'none';
+    showToast(`✅ 已更新【${studentName}】的体测档案`);
+
+    // 重新同步并刷新当前项目连录列表中的分数展示
+    renderTcBatchEntryTable();
+}
+// 体育课专用的：动态添加自定义科目功能
     function addNewScoreFieldIntoModal(className, gender) {
         const input = document.getElementById('newProjNameInput');
         if(!input) return;
@@ -2540,7 +2684,13 @@ function updateTcLiveScore(className, gender) {
     const fitness = calculateFitnessTotalScore(tempScores, className, gender);
     const scoreElem = document.getElementById('modalLiveFitnessScore');
     const lvlElem = document.getElementById('modalLiveFitnessLevel');
-    if (scoreElem) scoreElem.innerText = `${fitness.score} 分`;
+    if (scoreElem) {
+        if (fitness.bonusScore > 0) {
+            scoreElem.innerHTML = `${fitness.score} <span style="font-size:14px; color:#2E7D32;">(基础:${fitness.baseScore} + 附加:${fitness.bonusScore})</span>`;
+        } else {
+            scoreElem.innerText = `${fitness.score} 分`;
+        }
+    }
     if (lvlElem) {
         lvlElem.innerText = fitness.level;
         lvlElem.className = "level-badge " + getLevelClass(fitness.level);
@@ -2838,8 +2988,8 @@ function updateTcLiveScore(className, gender) {
         });
 
         // 附带 BMI 评价及体测最终加权总分、等级
-        row1.push("BMI数值", "BMI得分", "体测健康总分", "体测等级");
-        row2.push("", "", "(国标权重换算)", "");
+        row1.push("BMI数值", "BMI得分", "基础得分", "附加加分", "总分(含附加)", "评定等级");
+        row2.push("", "", "(满分100)", "(最高20分)", "", "");
 
         let dataRows = [row1, row2];
 
@@ -2937,7 +3087,7 @@ function updateTcLiveScore(className, gender) {
                 rowCells.push(valBMI || "-", scoreBMI);
 
                 const fitnessResult = calculateFitnessTotalScore(sScores, className, sGender);
-                rowCells.push(fitnessResult.score, fitnessResult.level);
+                rowCells.push(fitnessResult.baseScore, fitnessResult.bonusScore, fitnessResult.score, fitnessResult.level);
 
                 dataRows.push(rowCells);
             });
@@ -3191,32 +3341,34 @@ function getEffectiveClassName(className, targetDateStr) {
     return getUpgradedClassName(className, parseInt(baseYear, 10), targetDateStr);
 }
 function clearAllScoresOnly() {
-    const modNames = { ty: '体育课', tx: '体训队', db: '代表队' };
+    const modNames = { ty: '体育课', tc: '体测模式', tx: '体训队', db: '代表队' };
     const curName = modNames[currentModule] || '';
-    if (!confirm(`⚠️ 危险操作确认：\n仅清空当前【${curName}】所有学生的项目测试成绩？\n（学生的班级、姓名、考勤与打卡记录均会完好保留）`)) {
+    if (!confirm(`⚠️ 危险操作确认：\n仅清空当前【${curName}】所有学生的成绩？\n（名册基础信息与考勤完好保留，其他模块不受影响）`)) {
         return;
     }
 
-    if (currentModule === 'ty') {
+    if (currentModule === 'ty' || currentModule === 'tc') {
         Object.keys(students).forEach(cls => {
             students[cls].forEach(s => {
                 s.scores = {};
             });
         });
         saveModuleData();
-        showToast('已清空体育课全部项目成绩');
+        showToast(`已清空【${curName}】全部成绩`);
+        if (currentModule === 'tc') {
+            renderTcBatchEntryTable();
+        } else {
+            renderAccordion();
+        }
     } else if (currentModule === 'tx') {
         scoreHistory = {};
         saveModuleData();
         showToast('已清空体训队历史测试成绩');
-    } else {
-        showToast('代表队无成绩数据需要清空');
+        renderAccordion();
     }
-
-    renderAccordion();
 }
 // ================== 教师账号与权限管理引擎 ==================
-let currentUser = JSON.parse(sessionStorage.getItem('sys_current_user')) || null;
+let currentUser = JSON.parse(localStorage.getItem('sys_current_user')) || null;
 let teacherAccounts = JSON.parse(localStorage.getItem('sys_teacher_accounts')) || {
     "admin": { password: "admin", role: "admin", classes: [] }
 };
@@ -3254,8 +3406,10 @@ function handleLoginSubmit() {
     if (u === 'admin') {
         let adminPwd = teacherAccounts["admin"] ? teacherAccounts["admin"].password : "admin";
         if (p === adminPwd || p === "admin888") {
+            // 🌟 核心修复：先完成用户对象实例化，再持久化存入 localStorage
             currentUser = { username: 'admin', role: 'admin', classes: [] };
-            sessionStorage.setItem('sys_current_user', JSON.stringify(currentUser));
+            localStorage.setItem('sys_current_user', JSON.stringify(currentUser));
+            
             document.getElementById('loginModal').style.display = 'none';
             showToast('已登录管理员身份');
             checkUserLoginState();
@@ -3268,8 +3422,10 @@ function handleLoginSubmit() {
     }
 
     if (teacherAccounts[u] && teacherAccounts[u].password === p) {
+        // 教师账号登录修复
         currentUser = { username: u, role: 'teacher', classes: teacherAccounts[u].classes || [] };
-        sessionStorage.setItem('sys_current_user', JSON.stringify(currentUser));
+        localStorage.setItem('sys_current_user', JSON.stringify(currentUser));
+        
         document.getElementById('loginModal').style.display = 'none';
         showToast(`欢迎教师：${u}`);
         checkUserLoginState();
@@ -3278,7 +3434,6 @@ function handleLoginSubmit() {
         alert('账号不存在或密码错误！');
     }
 }
-
 function openTeacherAdminModal() {
     if (currentUser.role !== 'admin') { alert('无权限访问管理后台！'); return; }
     
@@ -3352,10 +3507,9 @@ function renderTeacherAccountList() {
         `;
     });
 }
-// 🌟 退出登录：清空会话并弹出登录窗口强制重新登录
 function handleLogout() {
     if (confirm('确定要退出当前账号吗？')) {
-        sessionStorage.removeItem('sys_current_user');
+        localStorage.removeItem('sys_current_user'); // 改为清空 localStorage
         currentUser = null;
         checkUserLoginState();
         renderAccordion();
@@ -3568,7 +3722,10 @@ function saveAndExitTcProject() {
     });
 
     saveModuleData();
-    showToast(`✅ 已保存本项成绩 (${updatedCount}人次)`);
+            if (currentModule === 'tc') {
+                localStorage.setItem('tc_students', JSON.stringify(students));
+            }
+showToast(`✅ 已保存本项体测成绩 (${updatedCount}人次)`);
 
     // 隐藏采集列表，清空项目选择框，方便直接换选下一项
     const projSelect = document.getElementById('tcProjectSelect');
